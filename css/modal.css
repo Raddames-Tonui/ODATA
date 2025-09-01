@@ -100,3 +100,15 @@
     background-color: var(--color-white);
     transform: scale(1.05);
 }
+
+.filterRow {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+}
+
+.filterField, .filterOp , .filterVal, .sortField, .sortOrder{
+    padding: 4px;
+    border-radius: 5px;
+    border: 1px solid #333;
+}

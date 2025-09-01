@@ -116,3 +116,8 @@ td strong {
   color: white;
 }
 
+.pagination-btn:disabled {
+  background-color:#fff;
+  cursor: not-allowed;
+  color: var(--color-text);
+}
