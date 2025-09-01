@@ -66,7 +66,32 @@ class DynamicTable {
         this.container.appendChild(table);
     }
 
+    setSort(field, direction) {
+        this.sortColumn = field;
+        this.sortDirection = direction;
+
+           this.filteredData.sort((a, b) => {
+      let v1 = a[field] ?? "";
+      let v2 = b[field] ?? "";
+
+      if (!isNaN(v1) && !isNaN(v2)) {
+        v1 = Number(v1);
+        v2 = Number(v2);
+      } else {
+        v1 = String(v1).toLowerCase();
+        v2 = String(v2).toLowerCase();
+      }
+
+      if (v1 < v2) return this.sortDirection === "asc" ? -1 : 1;
+      if (v1 > v2) return this.sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    this.render();
+    }
 }
+
+
 
 const columns = [
     new Column({ id: 'UserName', caption: 'UserName' }),
@@ -77,7 +102,12 @@ const columns = [
     new Column({ id: 'Age', caption: 'Age' })
 ];
 
-
+let ODATATable = null;
+function applySort(field, order) {
+  if (ODATATable) {
+    ODATATable.setSort(field, order);
+  }
+}
 
 async function fetchPeopleFromODATA() {
   const res = await fetch("https://services.odata.org/TripPinRESTierService/People")
@@ -88,18 +118,67 @@ async function fetchPeopleFromODATA() {
     UserName: p.UserName,
     FirstName: p.FirstName,
     LastName: p.LastName,
-    MiddleName: p.MiddleName ?? "",
+    MiddleName: p.MiddleName,
     Gender: p.Gender,
-    Age: p.Age ?? ""
+    Age: p.Age  ?? "N/A"
   }))
 
-  new DynamicTable("tableContainer", columns, data, 5)
+    ODATATable= new DynamicTable("tableContainer", columns, data, 5)
 }
 
 
 fetchPeopleFromODATA();
 
+function showModal({ title, body, footer }) {
+  document.getElementById("modal-title").innerHTML = title || "";
+  document.getElementById("modal-body").innerHTML = body || "";
+  document.getElementById("modal-footer").innerHTML = footer || "";
+  document.getElementById("modal").style.display = "flex";
+}
 
+document.getElementById("modal-close").addEventListener("click", () => {
+    document.getElementById("modal").style.display = "none";
+})
+
+document.getElementById("sort").addEventListener("click", () => {
+
+})
+
+
+
+// SORTINGTABLE
+
+document.getElementById("sort").addEventListener("click", () => {
+  // Build options dynamically from columns
+  const sortableCols = columns.filter(c => c.isSortable && !c.hide);
+
+  const optionsHtml = sortableCols.map(
+    c => `<option value="${c.id}">${c.caption}</option>`
+  ).join("");
+  showModal({
+    title: "Sort Tickets",
+    body: `
+      <label>Choose field:</label>
+      <select id="sortField">${optionsHtml}</select>
+      <br><br>
+      <label>Order:</label>
+      <select id="sortOrder">
+        <option value="asc">Ascending</option>
+        <option value="desc">Descending</option>
+      </select>
+    `,
+    footer: `<button id="applySort">Apply</button>`
+  });
+
+  // attach handler for Apply
+  document.getElementById("applySort").addEventListener("click", () => {
+    const field = document.getElementById("sortField").value;
+    const order = document.getElementById("sortOrder").value;
+
+    applySort(field, order);
+    document.getElementById("modal").style.display = "none";
+  });
+});
 
 
 
