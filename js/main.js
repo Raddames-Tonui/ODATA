@@ -1,5 +1,5 @@
 
-
+// Table Head Columns
 class Column {
     constructor({ id, caption, size = 100, align = "left", hide = false,
         isSortable = true, isFilterable = true, data_type = "string" }) {
@@ -31,7 +31,7 @@ class DynamicTable {
         this.container.innerHTML = "";
         const table = document.createElement("table");
 
-        // ---------- HEAD ----------
+        //  HEAD    
         const thead = document.createElement("thead");
         const tr = document.createElement("tr");
         this.columns.forEach(col => {
@@ -46,7 +46,7 @@ class DynamicTable {
         thead.appendChild(tr);
         table.appendChild(thead);
 
-        // ---------- BODY ----------
+        //  BODY 
         const tbody = document.createElement("tbody");
 
         this.filteredData.forEach(row => {
@@ -70,26 +70,34 @@ class DynamicTable {
         this.sortColumn = field;
         this.sortDirection = direction;
 
-           this.filteredData.sort((a, b) => {
-      let v1 = a[field] ?? "";
-      let v2 = b[field] ?? "";
+        this.filteredData.sort((a, b) => {
+            let v1 = a[field] ?? "";
+            let v2 = b[field] ?? "";
 
-      if (!isNaN(v1) && !isNaN(v2)) {
-        v1 = Number(v1);
-        v2 = Number(v2);
-      } else {
-        v1 = String(v1).toLowerCase();
-        v2 = String(v2).toLowerCase();
-      }
+            if (!isNaN(v1) && !isNaN(v2)) {
+                v1 = Number(v1);
+                v2 = Number(v2);
+            } else {
+                v1 = String(v1).toLowerCase();
+                v2 = String(v2).toLowerCase();
+            }
 
-      if (v1 < v2) return this.sortDirection === "asc" ? -1 : 1;
-      if (v1 > v2) return this.sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
+            if (v1 < v2) return this.sortDirection === "asc" ? -1 : 1;
+            if (v1 > v2) return this.sortDirection === "asc" ? 1 : -1;
+            return 0;
+        });
 
-    this.render();
+        this.render();
+    }
+
+    setData(newData) {
+        this.rawData = newData;
+        this.filteredData = [...newData];
+        this.currentPage = 1;
+        this.render();
     }
 }
+
 
 
 
@@ -103,27 +111,51 @@ const columns = [
 ];
 
 let ODATATable = null;
+
+// Apply sort and persist in the URL
 function applySort(field, order) {
-  if (ODATATable) {
-    ODATATable.setSort(field, order);
-  }
+    const params = new URLSearchParams(window.location.search);
+    params.set(`$orderby`, `${field} ${order}`);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", newUrl);
+    fetchPeopleFromODATA(field, order)
 }
 
-async function fetchPeopleFromODATA() {
-  const res = await fetch("https://services.odata.org/TripPinRESTierService/People")
+document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("$orderby")) {
+        const [field, order] = params.get("$orderby").split(" ");
+        fetchPeopleFromODATA(field, order);
+    } else {
+        fetchPeopleFromODATA();
+    }
+})
 
-  const json = await res.json();
+async function fetchPeopleFromODATA(sortField = null, sortOrder = "asc") {
+    let baseURL = "https://services.odata.org/TripPinRESTierService/People"
+    let url = baseURL;
 
-  const data = json.value.map(p => ({
-    UserName: p.UserName,
-    FirstName: p.FirstName,
-    LastName: p.LastName,
-    MiddleName: p.MiddleName,
-    Gender: p.Gender,
-    Age: p.Age  ?? "N/A"
-  }))
+    if (sortField) {
+        url += `?$orderby=${sortField} ${sortOrder}`;
+    }
 
-    ODATATable= new DynamicTable("tableContainer", columns, data, 5)
+    const res = await fetch(url);
+    const json = await res.json();
+
+    const data = json.value.map(p => ({
+        UserName: p.UserName,
+        FirstName: p.FirstName,
+        LastName: p.LastName,
+        MiddleName: p.MiddleName || "",
+        Gender: p.Gender,
+        Age: p.Age || ""
+    }))
+
+    if (!ODATATable) {
+        ODATATable = new DynamicTable("tableContainer", columns, data, 5);
+    } else {
+        ODATATable.setData(data)
+    }
 }
 
 
@@ -181,62 +213,3 @@ document.getElementById("sort").addEventListener("click", () => {
 });
 
 
-
-
-const columns2 = [
-    new Column({ id: 'ticket_id', caption: "Ticket ID", data_type: "number", size: 25 }),
-    new Column({ id: 'raised_by', caption: "Raised by", align: 'right' }),
-    new Column({ id: 'ticket_details', caption: "Ticket Details" }),
-    new Column({ id: 'date_created', caption: "Date Created" }),
-    new Column({ id: 'actions', caption: "Actions" })
-];
-
-// const data = [
-//   { username: "jdoe", first_name: "John", last_name: "Doe", middle_name: "A", gender: "Male", age: 29 },
-//   { username: "asmith", first_name: "Alice", last_name: "Smith", middle_name: "B", gender: "Female", age: 34 },
-//   { username: "bwilliams", first_name: "Bob", last_name: "Williams", middle_name: "C", gender: "Male", age: 41 },
-//   { username: "cjohnson", first_name: "Carol", last_name: "Johnson", middle_name: "D", gender: "Female", age: 25 },
-//   { username: "dmiller", first_name: "David", last_name: "Miller", middle_name: "E", gender: "Male", age: 37 }
-// ];
-
-// const data2 = [
-//   { 
-//     ticket_id: 1, 
-//     raised_by: "jdoe", 
-//     ticket_details: "Login issue on portal", 
-//     date_created: "2025-08-20", 
-//     actions: "View"
-//   },
-//   { 
-//     ticket_id: 2, 
-//     raised_by: "asmith", 
-//     ticket_details: "Page not loading on dashboard", 
-//     date_created: "2025-08-21", 
-//     actions: "View"
-//   },
-//   { 
-//     ticket_id: 3, 
-//     raised_by: "bwilliams", 
-//     ticket_details: "Password reset not working", 
-//     date_created: "2025-08-22", 
-//     actions: "Edit"
-//   },
-//   { 
-//     ticket_id: 4, 
-//     raised_by: "cjohnson", 
-//     ticket_details: "Feature request: Dark mode", 
-//     date_created: "2025-08-23", 
-//     actions: "Close"
-//   },
-//   { 
-//     ticket_id: 5, 
-//     raised_by: "dmiller", 
-//     ticket_details: "Error 500 on reports page", 
-//     date_created: "2025-08-24", 
-//     actions: "View"
-//   }
-// ];
-
-
-
-// const table2 = new DynamicTable("tableContainer2", columns2, data2, 3);
