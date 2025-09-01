@@ -172,7 +172,7 @@ document.getElementById("sort").addEventListener("click", () => {
       <button id="addSort">+ Add Another</button>
     `,
     footer: `
-      <button id="resetSort">Reset</button>
+      <button id="resetSort ">Reset</button>
       <button id="applySort">Apply</button>
     `
   });
@@ -249,7 +249,7 @@ function applyFilter(filterFields) {
 }
 
 async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 5) {
-    let baseURL = "https://services.odata.org/TripPinRESTierService/People";
+    let baseURL = "https://services.odata.org/v4/TripPinServiceRW/People";
     const params = [];
 
     if (orderby) params.push(`$orderby=${encodeURIComponent(orderby)}`);

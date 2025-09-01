@@ -39,53 +39,6 @@
 
 
 
-/* ATTACHMENTS  */
-.ticket-card {
-  padding: 15px;
-  margin: 15px 0;
-}
-
-.ticket-title {
-  margin: 0 0 10px;
-  font-size: 1.2rem;
-  color: var(--color-accent200);
-  text-decoration: underline;
-}
-
-.ticket-details p {
-  line-height: 1.5;
-  margin-bottom: 0.75rem;
-}
-
-.ticket-attachments {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.attachment-item {
-  border-radius: 6px;
-  padding: 5px;
-  background: #fff;
-  margin-left: 2rem;
-}
-
-
-.attachment-img {
-  max-width: 120px;
-  max-height: 120px;
-  border-radius: 4px;
-}
-
-.attachment-link {
-  text-decoration: none;
-  color: var(--color-primary);
-  font-weight: bold;
-}
-
 
 /* MODAL CSS */
 .hidden-modal { display: none; }
