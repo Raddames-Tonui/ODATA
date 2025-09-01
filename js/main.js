@@ -150,7 +150,7 @@ function applySort(sortFields) {
   fetchPeopleFromODATA(orderby);
 }
 
-// SORTINGTABLE
+// SORTING TABLE
 document.getElementById("sort").addEventListener("click", () => {
   const sortableCols = columns.filter(c => c.isSortable && !c.hide);
   const optionsHtml = sortableCols.map(
@@ -366,6 +366,7 @@ function renderPagination(totalCount, pageSize, currentPage) {
 
     const prevBtn = document.createElement("button");
     prevBtn.textContent = "Previous";
+    prevBtn.classList.add("pagination-btn", "prev-btn");
     prevBtn.disabled = currentPage === 1;
     prevBtn.onclick = () => {
         const params = new URLSearchParams(window.location.search);
@@ -376,6 +377,7 @@ function renderPagination(totalCount, pageSize, currentPage) {
 
     const nextBtn = document.createElement("button");
     nextBtn.textContent = "Next";
+    nextBtn.classList.add("pagination-btn", "next-btn");
     nextBtn.disabled = currentPage === totalPages;
     nextBtn.onclick = () => {
         const params = new URLSearchParams(window.location.search);

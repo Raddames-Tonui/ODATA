@@ -91,3 +91,28 @@ td strong {
 .icon-btn.delete:hover {
   color: #d93025;
 }
+
+
+
+/* Pagination */
+.pagination {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: end;
+  gap: 1.5rem;
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: var(--color-secondary);
+  color: white;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.pagination-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+

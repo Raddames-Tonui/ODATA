@@ -1,5 +1,22 @@
 @import url('../css/variables.css');
 
+/* 
+:root {
+
+  --color-primary: #2C1D46;   
+  --color-secondary: #65558F;
+  --color-accent: #D98873;   
+
+
+  --color-background: #f5f5f5;
+  --color-text: #333;
+  --color-white: #fff;
+  --color-border: #bbb;
+
+
+  --color-focus: #6d28d9;
+  --color-hover: #5b21b6;
+} */
 
 
 .main {
@@ -39,155 +56,144 @@
 
 
 
-
-/* MODAL CSS */
-.hidden-modal { display: none; }
-#custom-modal {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.modal-content {
-  background: white;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  width: 300px;
-}
-.modal-actions {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-.close-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  cursor: pointer;
-}
-
-
-
-.info-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
+.tickets-table {
   width: 100%;
-  height: 100%;
-  display: none;            
-  justify-content: center;
-  align-items: center;
-  background: rgba(0,0,0,0.5);
-  z-index: 1000;
+  border-collapse: collapse;
+  font-size: 16px;
 }
 
-/* Modal content box */
-.info-modal .modal-body {
-  background: #fff;
-  padding: 2rem;
-  max-width: 1500px;
-  width: 90%;
-  position: relative;
-}
-
-/* Close button */
-.info-modal .close-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.8rem;
-  background: none;
-  border: none;
-  font-size: 1.4rem;
-  cursor: pointer;
-  color: #333;
-}
-
-
-.info-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: none; 
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-
-.info-modal .modal-body {
-  background: var(--color-white);
-  padding: 2rem;
-  max-width: 500px;
-  width: 90%;
-  position: relative;
-}
-
-
-.info-modal .modal-header {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: 1rem;
-}
-
-
-.info-modal .modal-content {
-  font-size: 0.95rem;
-  color: var(--color-text);
-  line-height: 1.5;
-}
-
-
-.info-modal .close-btn {
-  position: absolute;
-  top: 0.8rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.4rem;
-  cursor: pointer;
+.tickets-table thead {
   color: var(--color-secondary);
-  transition: color 0.2s ease;
-}
-.info-modal .close-btn:hover {
-  color: var(--color-accent);
+  border-bottom: 2px solid var(--color-secondary);
+  font-weight: 600;
 }
 
+.tickets-table th, 
+.tickets-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
 
-.info-modal .modal-actions {
-  margin-top: 1.5rem;
+.tickets-table th {
+  font-weight: 600;
+}
+
+.tickets-table td .email {
+  color: gray;
+  font-size: 12px;
+}
+
+.tickets-table td strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.ticket-message {
+  max-width: 400px;
+}
+
+.ticket-message .truncate {
+  display: inline-block;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  color: gray;
+
+}
+
+.ticket-date, .ticket-id {
+  vertical-align: middle;   
+  height: 50px;             
+}
+
+.cell-content {
   display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
+  align-items: center;  
+  justify-content: start; 
+  height: 100%;
 }
 
-.info-modal .btn {
-  padding: 0.5rem 1.1rem;
+.flex-cell {
+  display: flex;
+  justify-content: space-evenly; 
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap; 
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
   border: none;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
+  font-size: 1.25rem; 
+  transition: color 0.2s, transform 0.2s;
 }
 
-.info-modal .btn.ok {
-  background: var(--color-secondary);
-  color: var(--color-white);
-}
-.info-modal .btn.ok:hover {
-  background: var(--color-accent);
+.icon-btn svg {
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
-.info-modal .btn.cancel {
-  background: var(--color-border);
-  color: var(--color-white);
+.icon-btn:hover {
+  color: #572C82; 
+  transform: scale(1.1);
 }
-.info-modal .btn.cancel:hover {
-  background: var(--color-text);
+
+.icon-btn.delete:hover {
+  color: #d93025;
+}
+
+
+/* ATTACHMENTS  */
+.ticket-card {
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.ticket-title {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  color: var(--color-accent200);
+  text-decoration: underline;
+}
+
+.ticket-details p {
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.ticket-attachments {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.attachment-item {
+  border-radius: 6px;
+  padding: 5px;
+  background: #fff;
+  margin-left: 2rem;
+}
+
+
+.attachment-img {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 4px;
+}
+
+.attachment-link {
+  text-decoration: none;
+  color: var(--color-primary);
+  font-weight: bold;
 }
 
