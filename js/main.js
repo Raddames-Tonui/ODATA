@@ -350,17 +350,5 @@ document.getElementById("filter").addEventListener("click", () => {
 });
 
 
-//  Handle "Reset" → remove $filter from URL, reload data without filters
-document.getElementById("resetFilter").addEventListener("click", () => {
-    params.delete("$filter");
-
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, "", newUrl);
-
-    fetchPeopleFromODATA(params.get("$orderby"));
-    document.getElementById("modal").style.display = "none";
-})
-
-
 
 
