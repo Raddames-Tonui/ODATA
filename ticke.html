@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic OData Table</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f5f5f5; cursor: pointer; }
+    .hidden { display: none; }
+    .pagination { margin-top: 10px; }
+    .pagination button { margin: 0 3px; }
+  </style>
+</head>
+<body>
+  <h2>Dynamic Table Example</h2>
+  <input type="text" id="filterInput" placeholder="Type to filter..." />
+  <div id="tableContainer"></div>
+  <div class="pagination" id="pagination"></div>
+
+  <script>
+    class Column {
+      constructor({ id, caption, size = 100, align = "left", hide = false,
+                    isSortable = true, isFilterable = true, data_type = "string" }) {
+        this.id = id;
+        this.caption = caption;
+        this.size = size;
+        this.align = align;
+        this.hide = hide;
+        this.isSortable = isSortable;
+        this.isFilterable = isFilterable;
+        this.data_type = data_type;
+      }
+    }
+
+    class DynamicTable {
+      constructor(containerId, columns, data, rowsPerPage = 5) {
+        this.container = document.getElementById(containerId);
+        this.columns = columns;
+        this.rawData = data;
+        this.filteredData = [...data];
+        this.currentPage = 1;
+        this.rowsPerPage = rowsPerPage;
+        this.sortColumn = null;
+        this.sortDirection = 'asc';
+        this.render();
+      }
+
+      setFilter(query) {
+        this.filteredData = this.rawData.filter(row => {
+          return this.columns.some(col =>
+            col.isFilterable &&
+            String(row[col.id]).toLowerCase().includes(query.toLowerCase())
+          );
+        });
+        this.currentPage = 1;
+        this.render();
+      }
+
+      setSort(colId) {
+        if (this.sortColumn === colId) {
+          this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          this.sortColumn = colId;
+          this.sortDirection = 'asc';
+        }
+        this.filteredData.sort((a, b) => {
+          let v1 = a[colId], v2 = b[colId];
+          if (typeof v1 === "number" && typeof v2 === "number") {
+            return this.sortDirection === 'asc' ? v1 - v2 : v2 - v1;
+          }
+          return this.sortDirection === 'asc'
+            ? String(v1).localeCompare(String(v2))
+            : String(v2).localeCompare(String(v1));
+        });
+        this.render();
+      }
+
+      getPaginatedData() {
+        let start = (this.currentPage - 1) * this.rowsPerPage;
+        return this.filteredData.slice(start, start + this.rowsPerPage);
+      }
+
+      renderPagination() {
+        const pagination = document.getElementById("pagination");
+        pagination.innerHTML = "";
+        const totalPages = Math.ceil(this.filteredData.length / this.rowsPerPage);
+        for (let i = 1; i <= totalPages; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = i;
+          btn.disabled = i === this.currentPage;
+          btn.addEventListener("click", () => {
+            this.currentPage = i;
+            this.render();
+          });
+          pagination.appendChild(btn);
+        }
+      }
+
+      render() {
+        this.container.innerHTML = "";
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const tr = document.createElement("tr");
+
+        this.columns.forEach(col => {
+          if (!col.hide) {
+            const th = document.createElement("th");
+            th.style.width = col.size + "px";
+            th.style.textAlign = col.align;
+            th.textContent = col.caption;
+            if (col.isSortable) {
+              th.addEventListener("click", () => this.setSort(col.id));
+            }
+            tr.appendChild(th);
+          }
+        });
+        thead.appendChild(tr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        this.getPaginatedData().forEach(row => {
+          const tr = document.createElement("tr");
+          this.columns.forEach(col => {
+            if (!col.hide) {
+              const td = document.createElement("td");
+              td.style.textAlign = col.align;
+              td.textContent = row[col.id];
+              tr.appendChild(td);
+            }
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        this.container.appendChild(table);
+        this.renderPagination();
+      }
+    }
+
+    // Example usage:
+    const columns = [
+      new Column({ id: 'ticket_id', caption: "Ticket ID", data_type: "number" }),
+      new Column({ id: 'subject', caption: "Subject", align: 'right' }),
+      new Column({ id: 'priority', caption: "Priority" }),
+      new Column({ id: 'status', caption: "Status" })
+    ];
+
+    const data = [
+      { ticket_id: 1, subject: "Login Issue", priority: "High", status: "Open" },
+      { ticket_id: 2, subject: "Page not loading", priority: "Medium", status: "Closed" },
+      { ticket_id: 3, subject: "Password reset", priority: "Low", status: "Open" },
+      { ticket_id: 4, subject: "Feature request", priority: "Low", status: "Pending" },
+      { ticket_id: 5, subject: "Error 500", priority: "High", status: "Open" },
+      { ticket_id: 6, subject: "UI Bug", priority: "Medium", status: "Closed" },
+    ];
+
+    const table = new DynamicTable("tableContainer", columns, data, 3);
+
+    // Hook up filter box
+    document.getElementById("filterInput").addEventListener("input", (e) => {
+      table.setFilter(e.target.value);
+    });
+  </script>
+</body>
+</html>

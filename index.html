@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta description="hello world">
+  <title>Tatua Ticketing System</title>
+  <link rel="stylesheet" href="./css/index.css">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/modal.css">
+</head>
+<body>
+    <header class="header">
+      <div class="header-wrapper">
+        <div>
+          <a href="./index.html"><img src="./assets/logo.png" alt="Tatua Logo"></a>
+          <h1 class="logo">Tatua</h1>
+        </div>
+        <nav class="nav">        
+          <a  id="nav-form" href="./index.html" class="nav-link" >Raise Ticket</a>
+          <a  id="nav-tickets" href="./tickets.html" class="nav-link">Tickets List</a>
+        </nav>
+      </div>
+    
+  </header>
+
+  <main id="form-page" class="main">
+    <p class="intro-text">
+      Have any enquiries? Fill this form and we will get back to you as soon as possible
+    </p>
+
+    <form id="ticket-form" class="ticket-form"  method="post" enctype="multipart/form-data" novalidate>
+      
+      <div class="form-group">
+        <label for="fullName" class="form-label">Full Name:</label>
+        <div class="input-wrapper">
+          <input type="text" id="fullName" name="fullName" class="form-input" required>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="email" class="form-label">Email Address:</label>
+        <div class="input-wrapper">
+          <input type="email" id="email" name="email" class="form-input" required>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="phone" class="form-label">Phone Number:</label>
+        <div class="input-wrapper">
+          <input type="tel" id="phone" name="phone" class="form-input" required>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="subject" class="form-label">Subject:</label>
+        <div class="input-wrapper">
+          <select id="subject" name="subject" class="form-select" required>
+            <option value=""></option>
+            <option value="support">Support</option>
+            <option value="billing">Billing</option>
+            <option value="technical">Technical Issue</option>
+          </select>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="message" class="form-label">Message:</label>
+        <div class="input-wrapper">
+          <textarea id="message" name="message" class="form-textarea" rows="5" required></textarea>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <div><span class="form-label">Preferred Contact</span></div>
+        <div class="radio-buttons">
+          <label class="radio-label">
+            <input type="radio" name="preferredContact" value="email" class="form-radio" required>
+            Email
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="preferredContact" value="phone" class="form-radio" required>
+            Phone
+          </label>
+        </div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="attachment" class="form-label">Attachment</label>
+        <div class="input-wrapper">
+          <input type="file" id="attachment" name="attachment" class="form-file" accept=".pdf,.jpeg,.jpg" multiple>
+          <span class="input-indicator"></span>
+        </div>
+        <div class="selected-files"></div>
+        <div class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <div class=" form-terms">
+            <label class="checkbox-label">
+            <input type="checkbox" id="terms" name="terms" class="form-checkbox" required>
+          I agree to the <a href="#" class="terms-link">Terms and Conditions</a>
+          </label>
+        </div>
+        
+        <div class="error-message"></div>
+      </div>
+
+      <button type="submit" class="btn-submit">Submit</button>
+      <button type="reset" class="btn-reset">Reset</button>
+    </form>
+  </main>
+
+  <div id="success-modal" class="hidden success-modal-overlay">
+    <div class="success-modal-box">
+      <div class="success-modal-header">
+        <h2>Success!</h2>
+         <div class="success-close-btn">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.00008 15.6667C5.32508 15.6667 2.33341 12.675 2.33341 9.00002C2.33341 5.32502 5.32508 2.33335 9.00008 2.33335C12.6751 2.33335 15.6667 5.32502 15.6667 9.00002C15.6667 12.675 12.6751 15.6667 9.00008 15.6667ZM9.00008 0.666687C4.39175 0.666687 0.666748 4.39169 0.666748 9.00002C0.666748 13.6084 4.39175 17.3334 9.00008 17.3334C13.6084 17.3334 17.3334 13.6084 17.3334 9.00002C17.3334 4.39169 13.6084 0.666687 9.00008 0.666687ZM11.1584 5.66669L9.00008 7.82502L6.84175 5.66669L5.66675 6.84169L7.82508 9.00002L5.66675 11.1584L6.84175 12.3334L9.00008 10.175L11.1584 12.3334L12.3334 11.1584L10.1751 9.00002L12.3334 6.84169L11.1584 5.66669Z" fill="#FF3B30"/>
+          </svg>
+       </div>   
+      </div>
+      <div class="success-modal-body">
+        <p>Ticket submitted successfully.</p>
+      </div>
+      <div class="success-modal-footer">
+        <button class="success-modal-close-btn" id="success-footer-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script  type="module" src="../js/main.js"></script>
+  <!-- <script src="../js/modal.js"></script>  -->
+
+</body>
+</html>

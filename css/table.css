@@ -1,0 +1,93 @@
+@import url(./variables.css);
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+thead {
+  color: var(--color-secondary);
+  border-bottom: 2px solid var(--color-secondary);
+  font-weight: 600;
+}
+
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  font-weight: 600;
+}
+
+td .email {
+  color: gray;
+  font-size: 12px;
+}
+
+td strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.ticket-message {
+  max-width: 400px;
+}
+
+.ticket-message .truncate {
+  display: inline-block;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  color: gray;
+
+}
+
+.ticket-date, .ticket-id {
+  vertical-align: middle;   
+  height: 50px;             
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;  
+  justify-content: start; 
+  height: 100%;
+}
+
+.flex-cell {
+  display: flex;
+  justify-content: space-evenly; 
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap; 
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem; 
+  transition: color 0.2s, transform 0.2s;
+}
+
+.icon-btn svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.icon-btn:hover {
+  color: #572C82; 
+  transform: scale(1.1);
+}
+
+.icon-btn.delete:hover {
+  color: #d93025;
+}

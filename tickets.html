@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tatua Ticket List</title>
+  <link rel="stylesheet" href="./css/index.css">
+  <link rel="stylesheet" href="./css/tickets.css">
+  <link rel="stylesheet" href="./css/modal2.css">
+  <link rel="stylesheet" href="./css/form.css">
+  <link rel="stylesheet" href="./css/table.css">
+</head>
+<body>
+    <header class="header">
+      <div class="header-wrapper">
+          <div>
+          <a href="./index.html"><img src="./assets/logo.png" alt="Tatua Logo"></a>
+          <h1 class="logo">Tatua</h1>
+        </div>
+        <nav class="nav">        
+          <a  id="nav-form" href="./index.html" class="nav-link">Raise Ticket</a>
+          <a  id="nav-tickets" href="./tickets.html" class="nav-link">Tickets List</a>
+        </nav>
+      </div>
+  </header>
+
+    <main class="main">
+    <section  class="search-filter-buttons">
+      <div id="sort" class="refresh">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+          xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 14L9.33337 11.3333H11.3334V4.66667H9.33337L12 2L14.6667 4.66667H12.6667V11.3333H14.6667M1.33337 12.6667V11.3333H8.00004V12.6667M1.33337 8.66667V7.33333H6.00004V8.66667M1.33337 4.66667V3.33333H4.00004V4.66667H1.33337Z"
+            fill="#5856D6" />
+        </svg>
+        <span>Sort</span>
+      </div>
+
+      <div id="filter" class="refresh">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+          xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 8.66667H12V7.33333H4M2 4V5.33333H14V4M6.66667 12H9.33333V10.6667H6.66667V12Z"
+            fill="#5856D6" />
+        </svg>
+        <span>Filter</span>
+      </div>
+
+      <div id="refresh" class="refresh">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12.6666 5.33335L9.99996 8.00002H12C12 9.06089 11.5785 10.0783 10.8284 10.8284C10.0782 11.5786 9.06083 12 7.99996 12C7.33329 12 6.68663 11.8334 6.13329 11.5334L5.15996 12.5067C5.97996 13.0267 6.95329 13.3334 7.99996 13.3334C9.41445 13.3334 10.771 12.7715 11.7712 11.7713C12.7714 10.7711 13.3333 9.41451 13.3333 8.00002H15.3333M3.99996 8.00002C3.99996 6.93915 4.42139 5.92174 5.17153 5.17159C5.92168 4.42145 6.93909 4.00002 7.99996 4.00002C8.66663 4.00002 9.31329 4.16669 9.86663 4.46669L10.84 3.49335C10.02 2.97335 9.04663 2.66669 7.99996 2.66669C6.58547 2.66669 5.22892 3.22859 4.22872 4.22878C3.22853 5.22898 2.66663 6.58553 2.66663 8.00002H0.666626L3.33329 10.6667L5.99996 8.00002" fill="#5856D6"/>
+          </svg>
+
+        <span>Refresh</span>
+      </div>
+    </section>
+
+    <div id="tableContainer">
+        <!-- Dynamic table  -->
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </main>
+
+
+  <!-- Universal Modal -->
+    <div id="modal" class="modal-overlay">
+      <div class="modal-wrapper">
+        <div class="modal-header">
+          <h2 id="modal-title"></h2>
+          <div id="modal-close" class="close-btn modal-close">
+              <svg  viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.00008 15.6667C5.32508 15.6667 2.33341 12.675 2.33341 9.00002C2.33341 5.32502 5.32508 2.33335 9.00008 2.33335C12.6751 2.33335 15.6667 5.32502 15.6667 9.00002C15.6667 12.675 12.6751 15.6667 9.00008 15.6667ZM9.00008 0.666687C4.39175 0.666687 0.666748 4.39169 0.666748 9.00002C0.666748 13.6084 4.39175 17.3334 9.00008 17.3334C13.6084 17.3334 17.3334 13.6084 17.3334 9.00002C17.3334 4.39169 13.6084 0.666687 9.00008 0.666687ZM11.1584 5.66669L9.00008 7.82502L6.84175 5.66669L5.66675 6.84169L7.82508 9.00002L5.66675 11.1584L6.84175 12.3334L9.00008 10.175L11.1584 12.3334L12.3334 11.1584L10.1751 9.00002L12.3334 6.84169L11.1584 5.66669Z" fill="#FF3B30"/>
+              </svg>
+          </div>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
+        <div id="modal-footer" class="modal-footer"></div>
+      </div>
+    </div>
+
+
+    <script src="./js/main.js"></script>
+  <!-- <script type="module" src="../js/ticket2.js"></script> -->
+  <!-- <script src="../js/modal2.js"></script> -->
+  <!-- <script src="../js/filters.js"></script>
+  <script src="../js/sort.js"></script> -->
+  
+</body>
+</html>
