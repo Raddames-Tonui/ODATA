@@ -67,3 +67,11 @@ body {
   font-weight: 600;
   text-decoration: underline;
 }
+
+
+.pagination {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: end;
+  gap: 1.5rem;
+}

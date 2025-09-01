@@ -248,16 +248,17 @@ function applyFilter(filterFields) {
     fetchPeopleFromODATA(orderby, params.get("$filter"));
 }
 
-async function fetchPeopleFromODATA(orderby = null, filter = null) {
+async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 5) {
     let baseURL = "https://services.odata.org/TripPinRESTierService/People";
     const params = [];
 
     if (orderby) params.push(`$orderby=${encodeURIComponent(orderby)}`);
     if (filter) params.push(`$filter=${encodeURIComponent(filter)}`);
+    params.push(`$top=${pageSize}`);
+    params.push(`$skip=${(page - 1) * pageSize}`);
 
-    // FIXED: string interpolation
-    const url = params.length ? `${baseURL}?${params.join("&")}` : baseURL;
-    console.log("fetching: ", url);
+    const url = `${baseURL}?${params.join("&")}`;
+    console.log("fetching:", url);
 
     const res = await fetch(url);
     const json = await res.json();
@@ -272,11 +273,16 @@ async function fetchPeopleFromODATA(orderby = null, filter = null) {
     }));
 
     if (!ODATATable) {
-        ODATATable = new DynamicTable("tableContainer", columns, data, 5);
+        ODATATable = new DynamicTable("tableContainer", columns, data, pageSize);
     } else {
         ODATATable.setData(data);
     }
+
+    ODATATable.currentPage = page;
+
+    renderPagination(json["@odata.count"], pageSize, page);
 }
+
 
 
 document.getElementById("filter").addEventListener("click", () => {
@@ -352,3 +358,33 @@ document.getElementById("filter").addEventListener("click", () => {
 
 
 
+function renderPagination(totalCount, pageSize, currentPage) {
+    const paginationDiv = document.getElementById("pagination");
+    paginationDiv.innerHTML = "";
+
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    const prevBtn = document.createElement("button");
+    prevBtn.textContent = "Previous";
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", currentPage - 1);
+        window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+        fetchPeopleFromODATA(params.get("$orderby"), params.get("$filter"), currentPage - 1, pageSize);
+    };
+
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next";
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", currentPage + 1);
+        window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+        fetchPeopleFromODATA(params.get("$orderby"), params.get("$filter"), currentPage + 1, pageSize);
+    };
+
+    paginationDiv.appendChild(prevBtn);
+    paginationDiv.appendChild(document.createTextNode(` Page ${currentPage} of ${totalPages} `));
+    paginationDiv.appendChild(nextBtn);
+}
