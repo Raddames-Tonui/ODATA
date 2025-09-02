@@ -7,6 +7,14 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchPeopleFromODATA(orderby, filter, page);  
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const refreshBtn = document.getElementById("refresh");
+  refreshBtn.addEventListener("click", () => {
+    window.location.reload();
+  });
+});
+
+
 /** MODALS */
 function showModal({ title, body, footer }) {
     document.getElementById("modal-title").innerHTML = title || "";
@@ -139,26 +147,32 @@ const columns = [
     new Column({ id: 'LastName', caption: 'Last Name' }),
     new Column({ id: 'MiddleName', caption: 'MiddleName',isSortable: false }),
     new Column({
-        id: 'Gender', caption: 'Gender',
+        id: 'Gender',
+        caption: 'Gender',
+        isSortable:false,
         render: (row) => {
-            if (row.Gender === "male") {
-                return `<span style="color : blue">${row.gender} </span>`
+            if (row.Gender === "Male") {
+                return `<span style="color:grey;">${row.Gender}</span>`;
             } else if (row.Gender === "Female") {
                 return `<span style="color:purple;">${row.Gender}</span>`;
             }
-                return `<span>${row.Gender || "N/A"}</span>`;
+            return `<span>${row.Gender || "N/A"}</span>`;
         }
-     }),
+    }),
     new Column({ id: 'Age', caption: 'Age', isSortable: false, hide: true }),
-    new Column({ 
-        id: "PreferredContact", 
-        caption: "Contact Info", 
+    new Column({
+        id: "PreferredContact",
+        caption: "Contact Info",
         isSortable: false,
         render: (row) => {
             if (!Array.isArray(row.Emails) || row.Emails.length === 0) {
                 return "<p>No emails available</p>";
             }
-            return `<div>${row.Emails.map(email => `<p style="color:red;">${email}</p>`).join("")}</div>`;
+            return `
+                <div>
+                    ${row.Emails.map(email => `<p style="color:grey; padding:4px 0">${email}</p>`).join("")}
+                </div>
+            `;
         }
     }),
 ];
@@ -188,8 +202,8 @@ function applySort(sortFields) {
 
     fetchPeopleFromODATA(orderby); 
 }
-
-document.getElementById("sort").addEventListener("click", () => {
+const sort = document.getElementById("sort");
+sort.addEventListener("click", () => {
     const sortableCols = columns.filter(c => c.isSortable && !c.hide);
     const optionsHtml = sortableCols
         .map(c => `<option value="${c.id}">${c.caption}</option>`)
@@ -282,6 +296,7 @@ document.getElementById("sort").addEventListener("click", () => {
         document.getElementById("modal").style.display = "none";
     });
 });
+
 
 
 /**  FILTER */
@@ -421,6 +436,28 @@ filter.addEventListener("click", () => {
         document.getElementById("modal").style.display = "none";
     });
 });
+
+
+/** UPDATE SORT AND FILTER BUTTONS */
+function updateButtonState() {
+    updateBtn(sort, activeSorts.length, "sort")
+    updateBtn(filter, activeFilters.length, "filter");
+}
+
+function updateBtn(button, count, label) {
+    const span = button.querySelector("span");
+    if (count > 0) {
+        span.innerHTML = `${count} ${label} <button class="clear-btn"> X</button>`
+        span.querySelector(".clear-btn").onclick = () => {
+            if (label === "sort") activeSorts = [];
+            if (label == "filter") activeFilters = [];
+            updateButtonState();
+        } 
+    }
+    else {
+            span.textContent = label;
+    }
+}
 
 
         /** FETCH DATA */
