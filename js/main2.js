@@ -130,8 +130,15 @@ const columns = [
     new Column({ id: 'LastName', caption: 'Last Name' }),
     new Column({ id: 'MiddleName', caption: 'MiddleName' }),
     new Column({ id: 'Gender', caption: 'Gender' }),
-    new Column({ id: 'Age', caption: 'Age', isSortable: false }),
-    // new Column({ id: 'Actions', caption: 'Actions' })
+    new Column({ id: 'Age', caption: 'Age' }),
+    new Column({
+                id: 'Emails',
+                caption: 'Emails',
+                render: (row) => {
+                    if (!row.Emails || !row.Emails.length) return "";
+                    return row.Emails.map(email => `<p style="color:red; background:; margin-bottom:5px;">${email}</p>`).join("");
+                }
+            })
 ];
 
 let ODATATable = null;
@@ -258,7 +265,7 @@ function applyFilter(filterFields) {
     fetchPeopleFromODATA(orderby, params.get("$filter"));
 }
 
-async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 10) {
+async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 5) {
     let baseURL = "https://services.odata.org/v4/TripPinServiceRW/People";
     const params = [];
 
@@ -266,24 +273,26 @@ async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pag
     if (filter) params.push(`$filter=${encodeURIComponent(filter)}`);
     params.push(`$top=${pageSize}`);
     params.push(`$skip=${(page - 1) * pageSize}`);
+    // params.push(`$count=true`)
 
     const url = `${baseURL}?${params.join("&")}`;
-    console.log("fetching:", url);
+    // console.log("fetching:", url);
 
     const res = await fetch(url);
     const json = await res.json();
 
-    const data = json.value.map(p => ({
-        UserName: p.UserName,
-        FirstName: p.FirstName,
-        LastName: p.LastName,
-        MiddleName: p.MiddleName || "",
-        Gender: p.Gender,
-        Age: p.Age || ""
-    }));
+    // const data = json.value.map(p => ({
+    //     UserName: p.UserName,
+    //     FirstName: p.FirstName,
+    //     LastName: p.LastName,
+    //     MiddleName: p.MiddleName || "",
+    //     Gender: p.Gender,
+    //     Age: p.Age || "",
+    //     Emails: p.Emails?.map(e => e.Address) || []
+    // }));
 
     if (!ODATATable) {
-        ODATATable = new DynamicTable("tableContainer", columns, data, pageSize);
+        ODATATable = new DynamicTable("tableContainer", columns, json.value, pageSize);
     } else {
         ODATATable.setData(data);
     }
@@ -323,7 +332,8 @@ document.getElementById("filter").addEventListener("click", () => {
           </svg>
         </button>
         `,
-        footer: `           
+        footer: `
+           
              <button id="resetFilter" class="cancel">Reset </button>
             <button id="applyFilterBtn" class="modal-close-btn">Submit</button>
         `
@@ -369,7 +379,6 @@ document.getElementById("filter").addEventListener("click", () => {
         document.getElementById("modal").style.display = "none";
     });
 });
-
 
 
 

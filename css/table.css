@@ -99,8 +99,8 @@ td strong {
   margin-top: 2rem;
   display: flex;
   justify-content: end;
-  gap: 1.5rem;
 }
+
 
 .pagination-btn {
   padding: 6px 12px;
@@ -108,7 +108,6 @@ td strong {
   background: var(--color-secondary);
   color: white;
   border-radius: 4px;
-  margin: 0 4px;
 }
 
 .pagination-btn:hover {
@@ -120,4 +119,11 @@ td strong {
   background-color:#fff;
   cursor: not-allowed;
   color: var(--color-text);
+}
+
+.next-btn{
+  margin-left: 1rem;
+}
+.prev-btn{
+  margin-right: 1rem;
 }

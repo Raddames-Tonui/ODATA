@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Styled Prompt & Alert (Single File)</title>
+  <style>
+    :root{
+      --bg: #0f172a; /* dark navy */
+      --card: #0b1220;
+      --muted: #9aa4b2;
+      --accent: #7c3aed; /* purple */
+      --success: #10b981;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 12px;
+      --shadow: 0 10px 30px rgba(2,6,23,0.6);
+      color-scheme: dark;
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#071028 0%, #07162a 100%);}
+    .container{max-width:900px;margin:48px auto;padding:24px;color:#e6eef8}
+
+    /* Basic button styles */
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));color:inherit;font-weight:600;cursor:pointer;box-shadow:var(--shadow);
+    }
+    .btn:active{transform:translateY(1px)}
+
+    .btn-primary{background:linear-gradient(180deg,var(--accent),#5b21b6);color:white}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
+    .btn-danger{background:linear-gradient(180deg,var(--danger),#b91c1c);color:white}
+
+    /* Modal base */
+    .backdrop{
+      position:fixed;inset:0;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .18s ease;
+    }
+    .backdrop.show{opacity:1;pointer-events:auto}
+
+    .modal{
+      width:min(560px, calc(100% - 40px));background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid rgba(255,255,255,0.03);transform:translateY(12px) scale(.99);transition:transform .2s cubic-bezier(.2,.9,.3,1),opacity .18s ease;opacity:0
+    }
+    .backdrop.show .modal{transform:translateY(0) scale(1);opacity:1}
+
+    .modal-header{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;gap:12px}
+    .icon{width:44px;height:44px;border-radius:10px;background:var(--glass);display:flex;align-items:center;justify-content:center}
+    .modal-title{font-size:1.05rem;font-weight:700}
+    .modal-body{padding:18px 20px;color:var(--muted);line-height:1.45}
+
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.02)}
+
+    input[type="text"], textarea{
+      width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:inherit;outline:none;font-size:0.98rem
+    }
+    input[type="text"]:focus{box-shadow:0 6px 18px rgba(124,58,237,0.14);border-color:rgba(124,58,237,0.6)}
+
+    .muted{color:var(--muted);font-size:0.92rem}
+
+    /* Small utilities */
+    .row{display:flex;gap:12px;align-items:center}
+    pre{white-space:pre-wrap;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;color:var(--muted)}
+
+    @media (max-width:520px){.modal{width:92%}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 style="margin:0 0 8px;font-weight:700">Styled Prompt & Alert — Demo</h1>
+    <p class="muted" style="margin:0 0 18px">Accessible, promise-based replacements for window.alert() and window.prompt(). Use the buttons below to try them.</p>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button id="btnAlert" class="btn btn-primary">Show Alert</button>
+      <button id="btnPrompt" class="btn btn-ghost">Show Prompt</button>
+      <button id="btnConfirm" class="btn btn-danger">Show Confirm</button>
+    </div>
+
+    <h3 style="margin-top:24px">Result</h3>
+    <pre id="result">(no result yet)</pre>
+
+    <!-- Template: modal root (re-used by alert/prompt) -->
+    <div id="modalRoot"></div>
+  </div>
+
+  <script>
+    /*
+      Lightweight, accessible modal system.
+      API:
+        showAlert(message, {title}) -> Promise<void>
+        showConfirm(message, {title}) -> Promise<boolean>
+        showPrompt(message, {title, placeholder, defaultValue}) -> Promise<string|null>
+    */
+
+    (function(){
+      const modalRoot = document.getElementById('modalRoot');
+
+      function trapFocus(container){
+        const focusable = container.querySelectorAll('a[href],button,textarea,input,select,[tabindex]:not([tabindex="-1"])');
+        if(!focusable.length) return(()=>{});
+        let first = focusable[0], last = focusable[focusable.length-1];
+        function keyHandler(e){
+          if(e.key === 'Tab'){
+            if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+            else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+          }
+          if(e.key === 'Escape'){ e.preventDefault(); /* allow callers to handle escape */ }
+        }
+        container.addEventListener('keydown', keyHandler);
+        return ()=>container.removeEventListener('keydown', keyHandler);
+      }
+
+      function createBackdrop(){
+        const d = document.createElement('div'); d.className='backdrop';
+        return d;
+      }
+
+      function animateIn(backdrop){ requestAnimationFrame(()=>backdrop.classList.add('show')) }
+      function animateOut(backdrop){ backdrop.classList.remove('show'); }
+
+      function buildModal({iconHtml, title, bodyHtml, footerHtml}){
+        const backdrop = createBackdrop();
+        const modal = document.createElement('div'); modal.className='modal';
+
+        const header = document.createElement('div'); header.className='modal-header';
+        header.innerHTML = `<div class="icon">${iconHtml||''}</div><div><div class="modal-title">${title||''}</div></div>`;
+
+        const body = document.createElement('div'); body.className='modal-body'; body.innerHTML = bodyHtml || '';
+        const actions = document.createElement('div'); actions.className='modal-actions'; actions.innerHTML = footerHtml || '';
+
+        modal.appendChild(header); modal.appendChild(body); modal.appendChild(actions);
+        backdrop.appendChild(modal);
+
+        return {backdrop, modal, body, actions, header};
+      }
+
+      function appendAndShow(backdrop){
+        modalRoot.appendChild(backdrop);
+        animateIn(backdrop);
+      }
+
+      function removeModal(backdrop){
+        return new Promise(resolve=>{
+          animateOut(backdrop);
+          backdrop.addEventListener('transitionend', function onEnd(e){
+            if(e.target !== backdrop) return; backdrop.removeEventListener('transitionend', onEnd);
+            backdrop.remove(); resolve();
+          });
+          // safety - if transitionend doesn't fire
+          setTimeout(()=>{ if(document.body.contains(backdrop)) backdrop.remove(); resolve(); }, 260);
+        })
+      }
+
+      // Public API
+      window.showAlert = function(message, opts={}){
+        return new Promise(resolve=>{
+          const icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.12"/></svg>';
+          const {backdrop, modal, actions} = buildModal({iconHtml:icon, title: opts.title||'Alert', bodyHtml:`<div>${String(message)}</div>`, footerHtml:`<button class="btn btn-ghost" data-action="ok">OK</button>`});
+
+          appendAndShow(backdrop);
+
+          const ok = actions.querySelector('[data-action="ok"]'); ok.focus();
+          const removeTrap = trapFocus(modal);
+
+          function cleanup(){ removeTrap(); removeModal(backdrop).then(()=>resolve()); }
+
+          ok.addEventListener('click', cleanup);
+          backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) cleanup(); });
+          modal.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cleanup(); });
+        });
+      }
+
+      window.showConfirm = function(message, opts={}){
+        return new Promise(resolve=>{
+          const icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          const {backdrop, modal, actions} = buildModal({iconHtml:icon, title: opts.title||'Confirm', bodyHtml:`<div>${String(message)}</div>`, footerHtml:`<button class="btn btn-ghost" data-action="cancel">Cancel</button><button class="btn btn-primary" data-action="ok">OK</button>`});
+
+          appendAndShow(backdrop);
+          const okBtn = actions.querySelector('[data-action="ok"]'); const cancelBtn = actions.querySelector('[data-action="cancel"]'); okBtn.focus();
+          const removeTrap = trapFocus(modal);
+
+          function doResolve(val){ removeTrap(); removeModal(backdrop).then(()=>resolve(val)); }
+          okBtn.addEventListener('click', ()=>doResolve(true));
+          cancelBtn.addEventListener('click', ()=>doResolve(false));
+          backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) doResolve(false); });
+          modal.addEventListener('keydown', (e)=>{ if(e.key==='Escape') doResolve(false); });
+        });
+      }
+
+      window.showPrompt = function(message, opts={}){
+        return new Promise(resolve=>{
+          const icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 6v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="8" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.2" opacity="0.12"/></svg>';
+          const inputId = 'prompt_input_' + Math.random().toString(36).slice(2,9);
+          const bodyHtml = `<div style=\"margin-bottom:12px\">${String(message)}</div><input id=\"${inputId}\" type=\"text\" placeholder=\"${(opts.placeholder||'')}\" value=\"${(opts.defaultValue||'')}\" />`;
+
+          const {backdrop, modal, actions} = buildModal({iconHtml:icon, title: opts.title||'Prompt', bodyHtml, footerHtml:`<button class="btn btn-ghost" data-action="cancel">Cancel</button><button class="btn btn-primary" data-action="ok">Submit</button>`});
+
+          appendAndShow(backdrop);
+
+          const input = modal.querySelector('#' + inputId);
+          const okBtn = actions.querySelector('[data-action="ok"]'); const cancelBtn = actions.querySelector('[data-action="cancel"]');
+          input.focus(); input.select();
+
+          const removeTrap = trapFocus(modal);
+
+          function done(val){ removeTrap(); removeModal(backdrop).then(()=>resolve(val)); }
+
+          okBtn.addEventListener('click', ()=> done(input.value));
+          cancelBtn.addEventListener('click', ()=> done(null));
+          backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) done(null); });
+          modal.addEventListener('keydown', (e)=>{ if(e.key==='Escape') done(null); if(e.key==='Enter' && document.activeElement === input){ done(input.value); } });
+        });
+      }
+
+    })();
+
+    // Demo wiring
+    document.getElementById('btnAlert').addEventListener('click', async ()=>{
+      await showAlert('This is a styled alert — it returns a promise which resolves when dismissed.');
+      document.getElementById('result').textContent = 'Alert dismissed at ' + new Date().toLocaleTimeString();
+    });
+
+    document.getElementById('btnConfirm').addEventListener('click', async ()=>{
+      const ok = await showConfirm('Do you want to proceed?', {title:'Please confirm'});
+      document.getElementById('result').textContent = 'Confirm result: ' + ok;
+    });
+
+    document.getElementById('btnPrompt').addEventListener('click', async ()=>{
+      const value = await showPrompt('Enter your name:', {placeholder:'Full name', defaultValue:'Master', title:'What is your name?'});
+      document.getElementById('result').textContent = (value === null) ? 'User cancelled' : 'User entered: ' + value;
+    });
+  </script>
+</body>
+</html>
