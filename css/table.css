@@ -127,3 +127,7 @@ td strong {
 .prev-btn{
   margin-right: 1rem;
 }
+
+.page-no {
+  margin: 0 2px;
+}
