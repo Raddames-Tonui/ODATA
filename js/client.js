@@ -1,0 +1,426 @@
+import { activeUrl, refreshDOM} from "./utils.js";
+refreshDOM();
+activeUrl();
+
+// Active nav link
+document.querySelectorAll('.nav-link').forEach(link => {
+  if (link.href === window.location.href) {
+    link.classList.add('active');
+  }
+});
+
+
+/** MODALS */
+function showModal({ title, body, footer }) {
+    document.getElementById("modal-title").innerHTML = title || "";
+    document.getElementById("modal-body").innerHTML = body || "";
+    document.getElementById("modal-footer").innerHTML = footer || "";
+    document.getElementById("modal").style.display = "flex";
+}
+
+// Close modal
+document.getElementById("modal-close").addEventListener("click", () => {
+    document.getElementById("modal").style.display = "none";
+});
+
+
+// Table Head Columns
+class Column {
+    constructor({ id, caption, size = 100, align = "left", hide = false,
+        isSortable = true, isFilterable = true, data_type = "string", render = null }) {
+        this.id = id;                 
+        this.caption = caption;       
+        this.size = size;            
+        this.align = align;          
+        this.hide = hide;             
+        this.isSortable = isSortable; 
+        this.isFilterable = isFilterable;
+        this.data_type = data_type;  
+        this.render = render;
+    }
+}
+
+const columns = [
+    new Column({ id: 'UserName', caption: 'UserName' }),
+    new Column({ id: 'FirstName', caption: 'First Name' }),
+    new Column({ id: 'LastName', caption: 'Last Name' }),
+    new Column({ id: 'MiddleName', caption: 'MiddleName',isSortable: false }),
+    new Column({
+        id: 'Gender',
+        caption: 'Gender',
+        isSortable:false,
+        render: (row) => {
+            if (row.Gender === "Male") {
+                return `<span style="color:grey;">${row.Gender}</span>`;
+            } else if (row.Gender === "Female") {
+                return `<span style="color:purple;">${row.Gender}</span>`;
+            }
+            return `<span>${row.Gender || "N/A"}</span>`;
+        }
+    }),
+    new Column({ id: 'Age', caption: 'Age', isSortable: false, hide: true }),
+];
+
+
+
+class DynamicTable {
+    constructor(containerId, columns, data, pageSize = 5) {
+        this.container = document.getElementById(containerId);
+        this.columns = columns;
+        this.rawData = data;
+        this.filteredData = [...data];
+        this.pageSize = pageSize;
+        this.currentPage = 1;
+        this.render();
+    }
+
+    setData(data, page = 1) {
+        this.rawData = data;
+        this.filteredData = [...data];
+        this.currentPage = page;
+        this.render();
+    }
+
+    render() {
+        this.container.innerHTML = "";
+        const table = document.createElement("table");
+
+        table.classList.add("dynamic-table");
+
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        this.columns.forEach(col => {
+            if (!col.hide) {
+                const th = document.createElement("th");
+                th.style.width = col.size + "px";
+                th.style.textAlign = col.align;
+                th.textContent = col.caption;
+                headerRow.appendChild(th);
+            }
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Body
+        const tbody = document.createElement("tbody");
+        const start = (this.currentPage - 1) * this.pageSize;
+        const pageData = this.filteredData.slice(start, start + this.pageSize);
+
+        pageData.forEach(row => {
+            const tr = document.createElement("tr");
+            this.columns.forEach(col => {
+                if (!col.hide) {
+                    const td = document.createElement("td");
+                    let val = row[col.id];
+                    if (Array.isArray(val)) {
+                        val = val.join(", ");
+                    }
+                    td.textContent = val ?? "";
+                    tr.appendChild(td);
+                }
+            });
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        this.container.appendChild(table);
+
+        renderPagination(this.filteredData.length, this.pageSize, this.currentPage);
+    }
+}
+
+
+let ODATATable = null;
+let lastController = null;
+let activeFilters = [];
+let activeSorts = [];
+
+
+async function fetchPeopleFromODATA(page = 1, pageSize = 5) {
+    if (lastController) lastController.abort();
+    const controller = new AbortController();
+    lastController = controller;
+
+    try {
+        const baseURL = "https://services.odata.org/v4/TripPinServiceRW/People";
+        const url = `${baseURL}?$count=true&$top=100`; 
+
+        const response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+
+        const json = await response.json();
+        const items = Array.isArray(json.value) ? json.value : [];
+
+        if (!ODATATable) {
+            ODATATable = new DynamicTable("tableContainer", columns, items, pageSize);
+        } else {
+            ODATATable.setData(items, page);
+        }
+
+        ODATATable.currentPage = page;
+
+        const totalCount = typeof json["@odata.count"] === "number" ? json["@odata.count"] : items.length;
+        renderPagination(totalCount, pageSize, page, orderby, filter);
+    } catch (err) {
+        if (err.name === "AbortError") {
+            console.error("Error fetching OData:", err);
+            return;
+        }
+    } finally {
+        lastController = null;
+    }
+}
+
+
+
+function applySort(sortFields) {
+    activeSorts = sortFields;
+
+    let data = [...ODATATable.rawData];
+
+    sortFields.forEach(({ field, order }) => {
+        data.sort((a, b) => {
+            let v1 = a[field] ?? "";
+            let v2 = b[field] ?? "";
+
+            if (!isNaN(v1) && !isNaN(v2)) {
+                v1 = Number(v1);
+                v2 = Number(v2);
+            } else {
+                v1 = String(v1).toLowerCase();
+                v2 = String(v2).toLowerCase();
+            }
+
+            if (v1 < v2) return order === "asc" ? -1 : 1;
+            if (v1 > v2) return order === "asc" ? 1 : -1;
+            return 0;
+        });
+    });
+
+    ODATATable.filteredData = data;
+    ODATATable.currentPage = 1;
+    ODATATable.render();
+    updateButtonState();
+}
+
+
+function applyFilter(filterFields) {
+    activeFilters = filterFields;
+
+    let data = [...ODATATable.rawData];
+
+    filterFields.forEach(f => {
+        data = data.filter(row => {
+            const value = String(row[f.field] ?? "").toLowerCase();
+            const compare = f.value.toLowerCase();
+            switch (f.op) {
+                case "equals": return value === compare;
+                case "contains": return value.includes(compare);
+                case "starts": return value.startsWith(compare);
+                case "ends": return value.endsWith(compare);
+                default: return true;
+            }
+        });
+    });
+
+    ODATATable.filteredData = data;
+    ODATATable.currentPage = 1;
+    ODATATable.render();
+    updateButtonState();
+}
+
+
+const sort = document.getElementById("sort");
+sort.addEventListener("click", () => {
+    showModal({
+        title: `
+            <svg width="133" height="25" viewBox="0 0 133 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 22L14 18H17V8H14L18 4L22 8H19V18H22M2 20V18H12V20M2 14V12H9V14M2 8V6H6V8H2Z" fill="#DB8A74"/>
+            <path d="M37.248 14.4365C37.248 14.2314 37.2161 14.0492 37.1523 13.8896C37.0931 13.7301 36.986 13.5843 36.8311 13.4521C36.6761 13.32 36.4574 13.1924 36.1748 13.0693C35.8968 12.9417 35.5413 12.8118 35.1084 12.6797C34.6344 12.5339 34.1969 12.3721 33.7959 12.1943C33.3994 12.012 33.0531 11.8024 32.7568 11.5654C32.4606 11.3239 32.2305 11.0482 32.0664 10.7383C31.9023 10.4238 31.8203 10.0615 31.8203 9.65137C31.8203 9.24577 31.9046 8.87663 32.0732 8.54395C32.2464 8.21126 32.4902 7.92415 32.8047 7.68262C33.1237 7.43652 33.4997 7.2474 33.9326 7.11523C34.3656 6.97852 34.8441 6.91016 35.3682 6.91016C36.1064 6.91016 36.7422 7.04688 37.2754 7.32031C37.8132 7.59375 38.2256 7.96061 38.5127 8.4209C38.8044 8.88118 38.9502 9.38932 38.9502 9.94531H37.248C37.248 9.61719 37.1774 9.3278 37.0361 9.07715C36.8994 8.82194 36.6898 8.62142 36.4072 8.47559C36.1292 8.32975 35.776 8.25684 35.3477 8.25684C34.9421 8.25684 34.6048 8.31836 34.3359 8.44141C34.0671 8.56445 33.8665 8.73079 33.7344 8.94043C33.6022 9.15007 33.5361 9.38704 33.5361 9.65137C33.5361 9.83822 33.5794 10.0091 33.666 10.1641C33.7526 10.3145 33.8848 10.4557 34.0625 10.5879C34.2402 10.7155 34.4635 10.8363 34.7324 10.9502C35.0013 11.0641 35.318 11.1735 35.6826 11.2783C36.234 11.4424 36.7148 11.6247 37.125 11.8252C37.5352 12.0212 37.877 12.2445 38.1504 12.4951C38.4238 12.7458 38.6289 13.0306 38.7656 13.3496C38.9023 13.6641 38.9707 14.0218 38.9707 14.4229C38.9707 14.8421 38.8864 15.2204 38.7178 15.5576C38.5492 15.8903 38.3076 16.1751 37.9932 16.4121C37.6833 16.6445 37.3096 16.8245 36.8721 16.9521C36.4391 17.0752 35.9561 17.1367 35.4229 17.1367C34.9443 17.1367 34.4727 17.0729 34.0078 16.9453C33.5475 16.8177 33.1283 16.624 32.75 16.3643C32.3717 16.0999 32.071 15.7718 31.8477 15.3799C31.6243 14.9834 31.5127 14.5208 31.5127 13.9922H33.2285C33.2285 14.3158 33.2832 14.5915 33.3926 14.8193C33.5065 15.0472 33.6637 15.234 33.8643 15.3799C34.0648 15.5212 34.2972 15.626 34.5615 15.6943C34.8304 15.7627 35.1175 15.7969 35.4229 15.7969C35.8239 15.7969 36.1589 15.7399 36.4277 15.626C36.7012 15.512 36.9062 15.3525 37.043 15.1475C37.1797 14.9424 37.248 14.7054 37.248 14.4365ZM40.1098 13.3838V13.2266C40.1098 12.6934 40.1872 12.1989 40.3422 11.7432C40.4971 11.2829 40.7204 10.8841 41.0121 10.5469C41.3083 10.2051 41.6684 9.94076 42.0922 9.75391C42.5206 9.5625 43.0036 9.4668 43.5414 9.4668C44.0837 9.4668 44.5668 9.5625 44.9906 9.75391C45.419 9.94076 45.7813 10.2051 46.0775 10.5469C46.3738 10.8841 46.5993 11.2829 46.7543 11.7432C46.9092 12.1989 46.9867 12.6934 46.9867 13.2266V13.3838C46.9867 13.917 46.9092 14.4115 46.7543 14.8672C46.5993 15.3229 46.3738 15.7217 46.0775 16.0635C45.7813 16.4007 45.4213 16.665 44.9975 16.8564C44.5736 17.0433 44.0928 17.1367 43.5551 17.1367C43.0128 17.1367 42.5274 17.0433 42.099 16.8564C41.6752 16.665 41.3152 16.4007 41.0189 16.0635C40.7227 15.7217 40.4971 15.3229 40.3422 14.8672C40.1872 14.4115 40.1098 13.917 40.1098 13.3838ZM41.7572 13.2266V13.3838C41.7572 13.7165 41.7914 14.0309 41.8598 14.3271C41.9281 14.6234 42.0352 14.8831 42.1811 15.1064C42.3269 15.3298 42.5137 15.5052 42.7416 15.6328C42.9695 15.7604 43.2406 15.8242 43.5551 15.8242C43.8604 15.8242 44.1247 15.7604 44.348 15.6328C44.5759 15.5052 44.7628 15.3298 44.9086 15.1064C45.0544 14.8831 45.1615 14.6234 45.2299 14.3271C45.3028 14.0309 45.3393 13.7165 45.3393 13.3838V13.2266C45.3393 12.8984 45.3028 12.5885 45.2299 12.2969C45.1615 12.0007 45.0521 11.7386 44.9018 11.5107C44.7559 11.2829 44.5691 11.1051 44.3412 10.9775C44.1179 10.8454 43.8513 10.7793 43.5414 10.7793C43.2315 10.7793 42.9626 10.8454 42.7348 10.9775C42.5115 11.1051 42.3269 11.2829 42.1811 11.5107C42.0352 11.7386 41.9281 12.0007 41.8598 12.2969C41.7914 12.5885 41.7572 12.8984 41.7572 13.2266ZM50.1219 11.0117V17H48.4744V9.60352H50.0467L50.1219 11.0117ZM52.3846 9.55566L52.3709 11.0869C52.2706 11.0687 52.1613 11.055 52.0428 11.0459C51.9288 11.0368 51.8149 11.0322 51.701 11.0322C51.4184 11.0322 51.1701 11.0732 50.9559 11.1553C50.7417 11.2327 50.5617 11.3467 50.4158 11.4971C50.2745 11.6429 50.1652 11.8206 50.0877 12.0303C50.0102 12.2399 49.9646 12.4746 49.951 12.7344L49.575 12.7617C49.575 12.2969 49.6206 11.8662 49.7117 11.4697C49.8029 11.0732 49.9396 10.7246 50.1219 10.4238C50.3087 10.123 50.5411 9.88835 50.8191 9.71973C51.1017 9.55111 51.4275 9.4668 51.7967 9.4668C51.8969 9.4668 52.004 9.47591 52.118 9.49414C52.2365 9.51237 52.3253 9.53288 52.3846 9.55566ZM57.2492 9.60352V10.8066H53.0793V9.60352H57.2492ZM54.2824 7.79199H55.9299V14.9561C55.9299 15.1839 55.9618 15.3594 56.0256 15.4824C56.0939 15.6009 56.1874 15.6807 56.3059 15.7217C56.4243 15.7627 56.5633 15.7832 56.7229 15.7832C56.8368 15.7832 56.9462 15.7764 57.051 15.7627C57.1558 15.749 57.2401 15.7354 57.3039 15.7217L57.3107 16.9795C57.174 17.0205 57.0145 17.057 56.8322 17.0889C56.6545 17.1208 56.4494 17.1367 56.217 17.1367C55.8387 17.1367 55.5038 17.0706 55.2121 16.9385C54.9204 16.8018 54.6926 16.5807 54.5285 16.2754C54.3645 15.9701 54.2824 15.5645 54.2824 15.0586V7.79199ZM66.1377 7.04688V17H64.4355V7.04688H66.1377ZM69.2617 7.04688V8.41406H61.3389V7.04688H69.2617ZM73.7641 15.5166V11.9893C73.7641 11.7249 73.7162 11.4971 73.6205 11.3057C73.5248 11.1143 73.379 10.9661 73.183 10.8613C72.9916 10.7565 72.7501 10.7041 72.4584 10.7041C72.1895 10.7041 71.9571 10.7497 71.7611 10.8408C71.5652 10.932 71.4125 11.055 71.3031 11.21C71.1937 11.3649 71.1391 11.5404 71.1391 11.7363H69.4984C69.4984 11.4447 69.5691 11.1621 69.7104 10.8887C69.8516 10.6152 70.0567 10.3714 70.3256 10.1572C70.5945 9.94303 70.9158 9.77441 71.2895 9.65137C71.6631 9.52832 72.0824 9.4668 72.5473 9.4668C73.1033 9.4668 73.5954 9.56022 74.0238 9.74707C74.4568 9.93392 74.7963 10.2165 75.0424 10.5947C75.293 10.9684 75.4184 11.4378 75.4184 12.0029V15.291C75.4184 15.6283 75.4411 15.9313 75.4867 16.2002C75.5368 16.4645 75.6075 16.6947 75.6986 16.8906V17H74.0102C73.9327 16.8223 73.8712 16.5967 73.8256 16.3232C73.7846 16.0452 73.7641 15.7764 73.7641 15.5166ZM74.0033 12.502L74.017 13.5205H72.8344C72.529 13.5205 72.2602 13.5501 72.0277 13.6094C71.7953 13.6641 71.6016 13.7461 71.4467 13.8555C71.2917 13.9648 71.1755 14.097 71.098 14.252C71.0206 14.4069 70.9818 14.5824 70.9818 14.7783C70.9818 14.9743 71.0274 15.1543 71.1186 15.3184C71.2097 15.4779 71.3419 15.6032 71.515 15.6943C71.6928 15.7855 71.907 15.8311 72.1576 15.8311C72.4949 15.8311 72.7888 15.7627 73.0395 15.626C73.2947 15.4847 73.4952 15.3138 73.641 15.1133C73.7868 14.9082 73.8643 14.7145 73.8734 14.5322L74.4066 15.2637C74.352 15.4505 74.2585 15.651 74.1264 15.8652C73.9942 16.0794 73.821 16.2845 73.6068 16.4805C73.3972 16.6719 73.1443 16.8291 72.848 16.9521C72.5564 17.0752 72.2191 17.1367 71.8363 17.1367C71.3533 17.1367 70.9226 17.041 70.5443 16.8496C70.1661 16.6536 69.8699 16.3916 69.6557 16.0635C69.4415 15.7308 69.3344 15.3548 69.3344 14.9355C69.3344 14.5436 69.4073 14.1973 69.5531 13.8965C69.7035 13.5911 69.9223 13.3359 70.2094 13.1309C70.501 12.9258 70.8565 12.7708 71.2758 12.666C71.6951 12.5566 72.1736 12.502 72.7113 12.502H74.0033ZM77.2479 6.5H78.8953V15.4209L78.7381 17H77.2479V6.5ZM83.7215 13.2334V13.377C83.7215 13.9238 83.66 14.4274 83.5369 14.8877C83.4184 15.3434 83.2361 15.7399 82.99 16.0771C82.7485 16.4144 82.4477 16.6764 82.0877 16.8633C81.7322 17.0456 81.3198 17.1367 80.8504 17.1367C80.3901 17.1367 79.9891 17.0501 79.6473 16.877C79.3055 16.7038 79.0184 16.4577 78.7859 16.1387C78.5581 15.8197 78.3735 15.4391 78.2322 14.9971C78.091 14.555 77.9907 14.0674 77.9314 13.5342V13.0762C77.9907 12.5384 78.091 12.0508 78.2322 11.6133C78.3735 11.1712 78.5581 10.7907 78.7859 10.4717C79.0184 10.1481 79.3032 9.89974 79.6404 9.72656C79.9822 9.55339 80.381 9.4668 80.8367 9.4668C81.3107 9.4668 81.7277 9.55794 82.0877 9.74023C82.4523 9.92253 82.7553 10.1823 82.9969 10.5195C83.2384 10.8522 83.4184 11.2487 83.5369 11.709C83.66 12.1693 83.7215 12.6774 83.7215 13.2334ZM82.074 13.377V13.2334C82.074 12.9007 82.0467 12.5885 81.992 12.2969C81.9373 12.0007 81.8462 11.7409 81.7186 11.5176C81.5955 11.2943 81.4269 11.1188 81.2127 10.9912C81.0031 10.859 80.741 10.793 80.4266 10.793C80.1349 10.793 79.8842 10.8431 79.6746 10.9434C79.465 11.0436 79.2895 11.1803 79.1482 11.3535C79.007 11.5267 78.8953 11.7272 78.8133 11.9551C78.7358 12.1829 78.6834 12.429 78.6561 12.6934V13.9307C78.6971 14.2725 78.7837 14.5869 78.9158 14.874C79.0525 15.1566 79.2439 15.3844 79.49 15.5576C79.7361 15.7262 80.0529 15.8105 80.4402 15.8105C80.7456 15.8105 81.0031 15.749 81.2127 15.626C81.4223 15.5029 81.5887 15.332 81.7117 15.1133C81.8393 14.89 81.9305 14.6302 81.9852 14.334C82.0444 14.0378 82.074 13.7188 82.074 13.377ZM86.9797 6.5V17H85.3254V6.5H86.9797ZM92.1451 17.1367C91.5982 17.1367 91.1038 17.0479 90.6617 16.8701C90.2242 16.6878 89.8505 16.4349 89.5406 16.1113C89.2353 15.7878 89.0006 15.4072 88.8365 14.9697C88.6725 14.5322 88.5904 14.0605 88.5904 13.5547V13.2812C88.5904 12.7025 88.6747 12.1784 88.8434 11.709C89.012 11.2396 89.2467 10.8385 89.5475 10.5059C89.8482 10.1686 90.2037 9.91113 90.6139 9.7334C91.024 9.55566 91.4684 9.4668 91.9469 9.4668C92.4755 9.4668 92.9381 9.55566 93.3346 9.7334C93.7311 9.91113 94.0592 10.1618 94.3189 10.4854C94.5833 10.8044 94.7792 11.1849 94.9068 11.627C95.039 12.069 95.1051 12.5566 95.1051 13.0898V13.7939H89.3902V12.6113H93.4781V12.4814C93.469 12.1852 93.4098 11.9072 93.3004 11.6475C93.1956 11.3877 93.0338 11.1781 92.815 11.0186C92.5963 10.859 92.3046 10.7793 91.94 10.7793C91.6666 10.7793 91.4228 10.8385 91.2086 10.957C90.999 11.071 90.8235 11.2373 90.6822 11.4561C90.541 11.6748 90.4316 11.9391 90.3541 12.249C90.2812 12.5544 90.2447 12.8984 90.2447 13.2812V13.5547C90.2447 13.8783 90.288 14.179 90.3746 14.457C90.4658 14.7305 90.5979 14.9697 90.7711 15.1748C90.9443 15.3799 91.1539 15.5417 91.4 15.6602C91.6461 15.7741 91.9264 15.8311 92.2408 15.8311C92.6373 15.8311 92.9905 15.7513 93.3004 15.5918C93.6103 15.4323 93.8792 15.2067 94.107 14.915L94.9752 15.7559C94.8157 15.9883 94.6083 16.2116 94.3531 16.4258C94.0979 16.6354 93.7857 16.8063 93.4166 16.9385C93.052 17.0706 92.6282 17.1367 92.1451 17.1367Z" fill="#DB8A74"/>
+            </svg>`,
+        body: `
+            <select id="sort-field" class="sortField">
+                ${columns.filter(c => c.isSortable).map(c => `<option value="${c.id}">${c.caption}</option>`).join("")}
+            </select>
+            <select id="sort-order" class="sortOrder">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+            <button class="deleteSortBtn" style="border:none;background:none;cursor:pointer; ">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 3V4H4V6H5V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V6H20V4H15V3H9ZM7 6H17V19H7V6ZM9 8V17H11V8H9ZM13 8V17H15V8H13Z" fill="#A10900"/>
+            </svg>
+        </button>
+        `,
+        footer: `
+            <button id="resetSort" class="cancel">Reset</button>
+            <button id="applySort" class="modal-close-btn">Apply</button>`
+    });
+
+    document.getElementById("applySort").addEventListener("click", () => {
+        const field = document.getElementById("sort-field").value;
+        const order = document.getElementById("sort-order").value;
+        applySort([{ field, order }]);
+        document.getElementById("modal").style.display = "none";
+    });
+
+    document.getElementById("resetSort").addEventListener("click", () => {
+        activeFilters = [];
+        document.getElementById("modal").style.display = "none";
+    })
+});
+
+// Filter Button 
+document.getElementById("filter").addEventListener("click", () => {
+    showModal({
+        title: `
+          <svg width="130" height="25" viewBox="0 0 130 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 13H18V11H6M3 6V8H21V6M10 18H14V16H10V18Z" fill="#DB8A74"/>
+          <path d="M30.7275 7.04688V17H29.0117V7.04688H30.7275ZM34.7881 11.4014V12.7617H30.29V11.4014H34.7881ZM35.3555 7.04688V8.41406H30.29V7.04688H35.3555ZM38.4223 9.60352V17H36.768V9.60352H38.4223ZM36.6586 7.66211C36.6586 7.41146 36.7406 7.2041 36.9047 7.04004C37.0733 6.87142 37.3057 6.78711 37.602 6.78711C37.8936 6.78711 38.1238 6.87142 38.2924 7.04004C38.461 7.2041 38.5453 7.41146 38.5453 7.66211C38.5453 7.9082 38.461 8.11328 38.2924 8.27734C38.1238 8.44141 37.8936 8.52344 37.602 8.52344C37.3057 8.52344 37.0733 8.44141 36.9047 8.27734C36.7406 8.11328 36.6586 7.9082 36.6586 7.66211ZM42.0906 6.5V17H40.4363V6.5H42.0906ZM47.3859 9.60352V10.8066H43.216V9.60352H47.3859ZM44.4191 7.79199H46.0666V14.9561C46.0666 15.1839 46.0985 15.3594 46.1623 15.4824C46.2307 15.6009 46.3241 15.6807 46.4426 15.7217C46.5611 15.7627 46.7001 15.7832 46.8596 15.7832C46.9735 15.7832 47.0829 15.7764 47.1877 15.7627C47.2925 15.749 47.3768 15.7354 47.4406 15.7217L47.4475 16.9795C47.3107 17.0205 47.1512 17.057 46.9689 17.0889C46.7912 17.1208 46.5861 17.1367 46.3537 17.1367C45.9755 17.1367 45.6405 17.0706 45.3488 16.9385C45.0572 16.8018 44.8293 16.5807 44.6652 16.2754C44.5012 15.9701 44.4191 15.5645 44.4191 15.0586V7.79199ZM52.0182 17.1367C51.4713 17.1367 50.9768 17.0479 50.5348 16.8701C50.0973 16.6878 49.7236 16.4349 49.4137 16.1113C49.1083 15.7878 48.8736 15.4072 48.7096 14.9697C48.5455 14.5322 48.4635 14.0605 48.4635 13.5547V13.2812C48.4635 12.7025 48.5478 12.1784 48.7164 11.709C48.885 11.2396 49.1197 10.8385 49.4205 10.5059C49.7213 10.1686 50.0768 9.91113 50.4869 9.7334C50.8971 9.55566 51.3414 9.4668 51.8199 9.4668C52.3486 9.4668 52.8111 9.55566 53.2076 9.7334C53.6041 9.91113 53.9322 10.1618 54.192 10.4854C54.4563 10.8044 54.6523 11.1849 54.7799 11.627C54.912 12.069 54.9781 12.5566 54.9781 13.0898V13.7939H49.2633V12.6113H53.3512V12.4814C53.3421 12.1852 53.2828 11.9072 53.1734 11.6475C53.0686 11.3877 52.9068 11.1781 52.6881 11.0186C52.4693 10.859 52.1777 10.7793 51.8131 10.7793C51.5396 10.7793 51.2958 10.8385 51.0816 10.957C50.872 11.071 50.6965 11.2373 50.5553 11.4561C50.414 11.6748 50.3046 11.9391 50.2271 12.249C50.1542 12.5544 50.1178 12.8984 50.1178 13.2812V13.5547C50.1178 13.8783 50.1611 14.179 50.2477 14.457C50.3388 14.7305 50.471 14.9697 50.6441 15.1748C50.8173 15.3799 51.027 15.5417 51.273 15.6602C51.5191 15.7741 51.7994 15.8311 52.1139 15.8311C52.5104 15.8311 52.8635 15.7513 53.1734 15.5918C53.4833 15.4323 53.7522 15.2067 53.9801 14.915L54.8482 15.7559C54.6887 15.9883 54.4814 16.2116 54.2262 16.4258C53.971 16.6354 53.6588 16.8063 53.2896 16.9385C52.9251 17.0706 52.5012 17.1367 52.0182 17.1367ZM58.0176 11.0117V17H56.3701V9.60352H57.9424L58.0176 11.0117ZM60.2803 9.55566L60.2666 11.0869C60.1663 11.0687 60.057 11.055 59.9385 11.0459C59.8245 11.0368 59.7106 11.0322 59.5967 11.0322C59.3141 11.0322 59.0658 11.0732 58.8516 11.1553C58.6374 11.2327 58.4574 11.3467 58.3115 11.4971C58.1702 11.6429 58.0609 11.8206 57.9834 12.0303C57.9059 12.2399 57.8604 12.4746 57.8467 12.7344L57.4707 12.7617C57.4707 12.2969 57.5163 11.8662 57.6074 11.4697C57.6986 11.0732 57.8353 10.7246 58.0176 10.4238C58.2044 10.123 58.4368 9.88835 58.7148 9.71973C58.9974 9.55111 59.3232 9.4668 59.6924 9.4668C59.7926 9.4668 59.8997 9.47591 60.0137 9.49414C60.1322 9.51237 60.221 9.53288 60.2803 9.55566ZM68.9295 7.04688V17H67.2273V7.04688H68.9295ZM72.0535 7.04688V8.41406H64.1307V7.04688H72.0535ZM76.5559 15.5166V11.9893C76.5559 11.7249 76.508 11.4971 76.4123 11.3057C76.3166 11.1143 76.1708 10.9661 75.9748 10.8613C75.7834 10.7565 75.5419 10.7041 75.2502 10.7041C74.9813 10.7041 74.7489 10.7497 74.5529 10.8408C74.357 10.932 74.2043 11.055 74.0949 11.21C73.9855 11.3649 73.9309 11.5404 73.9309 11.7363H72.2902C72.2902 11.4447 72.3609 11.1621 72.5021 10.8887C72.6434 10.6152 72.8485 10.3714 73.1174 10.1572C73.3863 9.94303 73.7076 9.77441 74.0812 9.65137C74.4549 9.52832 74.8742 9.4668 75.3391 9.4668C75.8951 9.4668 76.3872 9.56022 76.8156 9.74707C77.2486 9.93392 77.5881 10.2165 77.8342 10.5947C78.0848 10.9684 78.2102 11.4378 78.2102 12.0029V15.291C78.2102 15.6283 78.2329 15.9313 78.2785 16.2002C78.3286 16.4645 78.3993 16.6947 78.4904 16.8906V17H76.802C76.7245 16.8223 76.663 16.5967 76.6174 16.3232C76.5764 16.0452 76.5559 15.7764 76.5559 15.5166ZM76.7951 12.502L76.8088 13.5205H75.6262C75.3208 13.5205 75.052 13.5501 74.8195 13.6094C74.5871 13.6641 74.3934 13.7461 74.2385 13.8555C74.0835 13.9648 73.9673 14.097 73.8898 14.252C73.8124 14.4069 73.7736 14.5824 73.7736 14.7783C73.7736 14.9743 73.8192 15.1543 73.9104 15.3184C74.0015 15.4779 74.1337 15.6032 74.3068 15.6943C74.4846 15.7855 74.6988 15.8311 74.9494 15.8311C75.2867 15.8311 75.5806 15.7627 75.8312 15.626C76.0865 15.4847 76.287 15.3138 76.4328 15.1133C76.5786 14.9082 76.6561 14.7145 76.6652 14.5322L77.1984 15.2637C77.1437 15.4505 77.0503 15.651 76.9182 15.8652C76.786 16.0794 76.6128 16.2845 76.3986 16.4805C76.189 16.6719 75.9361 16.8291 75.6398 16.9521C75.3482 17.0752 75.0109 17.1367 74.6281 17.1367C74.1451 17.1367 73.7144 17.041 73.3361 16.8496C72.9579 16.6536 72.6617 16.3916 72.4475 16.0635C72.2333 15.7308 72.1262 15.3548 72.1262 14.9355C72.1262 14.5436 72.1991 14.1973 72.3449 13.8965C72.4953 13.5911 72.7141 13.3359 73.0012 13.1309C73.2928 12.9258 73.6483 12.7708 74.0676 12.666C74.4868 12.5566 74.9654 12.502 75.5031 12.502H76.7951ZM80.0396 6.5H81.6871V15.4209L81.5299 17H80.0396V6.5ZM86.5133 13.2334V13.377C86.5133 13.9238 86.4518 14.4274 86.3287 14.8877C86.2102 15.3434 86.0279 15.7399 85.7818 16.0771C85.5403 16.4144 85.2395 16.6764 84.8795 16.8633C84.524 17.0456 84.1116 17.1367 83.6422 17.1367C83.1819 17.1367 82.7809 17.0501 82.4391 16.877C82.0973 16.7038 81.8102 16.4577 81.5777 16.1387C81.3499 15.8197 81.1653 15.4391 81.024 14.9971C80.8827 14.555 80.7825 14.0674 80.7232 13.5342V13.0762C80.7825 12.5384 80.8827 12.0508 81.024 11.6133C81.1653 11.1712 81.3499 10.7907 81.5777 10.4717C81.8102 10.1481 82.095 9.89974 82.4322 9.72656C82.774 9.55339 83.1728 9.4668 83.6285 9.4668C84.1025 9.4668 84.5195 9.55794 84.8795 9.74023C85.2441 9.92253 85.5471 10.1823 85.7887 10.5195C86.0302 10.8522 86.2102 11.2487 86.3287 11.709C86.4518 12.1693 86.5133 12.6774 86.5133 13.2334ZM84.8658 13.377V13.2334C84.8658 12.9007 84.8385 12.5885 84.7838 12.2969C84.7291 12.0007 84.638 11.7409 84.5104 11.5176C84.3873 11.2943 84.2187 11.1188 84.0045 10.9912C83.7949 10.859 83.5328 10.793 83.2184 10.793C82.9267 10.793 82.676 10.8431 82.4664 10.9434C82.2568 11.0436 82.0813 11.1803 81.94 11.3535C81.7988 11.5267 81.6871 11.7272 81.6051 11.9551C81.5276 12.1829 81.4752 12.429 81.4479 12.6934V13.9307C81.4889 14.2725 81.5755 14.5869 81.7076 14.874C81.8443 15.1566 82.0357 15.3844 82.2818 15.5576C82.5279 15.7262 82.8447 15.8105 83.232 15.8105C83.5374 15.8105 83.7949 15.749 84.0045 15.626C84.2141 15.5029 84.3805 15.332 84.5035 15.1133C84.6311 14.89 84.7223 14.6302 84.777 14.334C84.8362 14.0378 84.8658 13.7188 84.8658 13.377ZM89.7715 6.5V17H88.1172V6.5H89.7715ZM94.9369 17.1367C94.39 17.1367 93.8956 17.0479 93.4535 16.8701C93.016 16.6878 92.6423 16.4349 92.3324 16.1113C92.0271 15.7878 91.7924 15.4072 91.6283 14.9697C91.4643 14.5322 91.3822 14.0605 91.3822 13.5547V13.2812C91.3822 12.7025 91.4665 12.1784 91.6352 11.709C91.8038 11.2396 92.0385 10.8385 92.3393 10.5059C92.64 10.1686 92.9955 9.91113 93.4057 9.7334C93.8158 9.55566 94.2602 9.4668 94.7387 9.4668C95.2673 9.4668 95.7299 9.55566 96.1264 9.7334C96.5229 9.91113 96.851 10.1618 97.1107 10.4854C97.3751 10.8044 97.571 11.1849 97.6986 11.627C97.8308 12.069 97.8969 12.5566 97.8969 13.0898V13.7939H92.182V12.6113H96.2699V12.4814C96.2608 12.1852 96.2016 11.9072 96.0922 11.6475C95.9874 11.3877 95.8256 11.1781 95.6068 11.0186C95.3881 10.859 95.0964 10.7793 94.7318 10.7793C94.4584 10.7793 94.2146 10.8385 94.0004 10.957C93.7908 11.071 93.6153 11.2373 93.474 11.4561C93.3327 11.6748 93.2234 11.9391 93.1459 12.249C93.073 12.5544 93.0365 12.8984 93.0365 13.2812V13.5547C93.0365 13.8783 93.0798 14.179 93.1664 14.457C93.2576 14.7305 93.3897 14.9697 93.5629 15.1748C93.7361 15.3799 93.9457 15.5417 94.1918 15.6602C94.4379 15.7741 94.7182 15.8311 95.0326 15.8311C95.4291 15.8311 95.7823 15.7513 96.0922 15.5918C96.4021 15.4323 96.671 15.2067 96.8988 14.915L97.767 15.7559C97.6075 15.9883 97.4001 16.2116 97.1449 16.4258C96.8897 16.6354 96.5775 16.8063 96.2084 16.9385C95.8438 17.0706 95.42 17.1367 94.9369 17.1367Z" fill="#DB8A74"/>
+          </svg>
+        `,
+        body: `
+            <select id="filter-field" class="filterField">
+                ${columns.filter(c => c.isFilterable).map(c => `<option value="${c.id}">${c.caption}</option>`).join("")}
+            </select>
+            <select id="filter-op" class="filterOp">
+                <option value="contains">Contains</option>
+                <option value="equals">Equals</option>
+                <option value="starts">Starts With</option>
+                <option value="ends">Ends With</option>
+            </select>
+            <input type="text" id="filter-value" class="filterVal" />
+        `,
+        footer: `
+            <button id="resetFilter" class="cancel">Reset</button>
+            <button id="applyFilterBtn" class="modal-close-btn">Apply</button>
+        `
+    });
+
+    document.getElementById("applyFilterBtn").addEventListener("click", () => {
+        const field = document.getElementById("filter-field").value;
+        const op = document.getElementById("filter-op").value;
+        const value = document.getElementById("filter-value").value;
+        applyFilter([{ field, op, value }]);
+        document.getElementById("modal").style.display = "none";
+    });
+});
+
+
+
+
+
+/** UPDATE SORT AND FILTER BUTTONS */
+function updateButtonState() {
+    updateBtn(document.getElementById("sort"), activeSorts.length, "Sort");
+    updateBtn(document.getElementById("filter"), activeFilters.length, "Filter");
+}
+
+function updateBtn(button, count, label) {
+    if (count > 0) {
+        button.innerHTML = `
+            <div style="
+                display:inline-flex;
+                align-items:center;
+                background:#7b1b1b;
+                color:#fff;
+                padding:4px 8px;
+                font-family:sans-serif;
+                font-size:14px;
+            ">
+                <span style="margin-right:4px;">${count}</span>
+                <span style="text-decoration:underline;">${label}</span>
+                <button class="clear-btn" style="
+                    background:#5a0f0f;
+                    color:white;
+                    border:none;
+                    margin-left:6px;
+                    cursor:pointer;
+                    font-size:14px;
+                    padding:0 4px;
+                ">X</button>
+            </div>
+        `;
+
+        button.querySelector(".clear-btn").onclick = () => {
+            if (label.toLowerCase() === "sort") activeSorts = [];
+            if (label.toLowerCase() === "filter") activeFilters = [];
+            updateButtonState();
+        };
+    } else {
+        button.innerHTML = `<span>${label}</span>`;
+    }
+}
+
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    fetchPeopleFromODATA(1, 5);
+});
+
+
+const paginationDiv = document.getElementById("pagination");
+function renderPagination(totalCount, pageSize, currentPage, orderby, filter) {
+    paginationDiv.innerHTML = "";
+    const totalPages = Math.ceil(20 / pageSize);
+    // PREVIOUS BUTTON
+    const prevBtn = document.createElement("button");
+    prevBtn.textContent = "Previous";
+    prevBtn.classList.add("pagination-btn",  "prev-btn");
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", currentPage - 1);  
+        if (orderby) params.set("$orderby", orderby);
+        if (filter) params.set("$filter", filter);
+        window.history.pushState({}, "", `?${params.toString()}`);
+        fetchPeopleFromODATA(orderby, filter, currentPage - 1, pageSize);
+    };
+    paginationDiv.appendChild(prevBtn);
+
+    // PAGE NUMBERS
+    for (let i = 1; i <= totalPages; i++){
+        const pageBtn = document.createElement("button");
+        pageBtn.textContent = i;
+        pageBtn.classList.add("pagination-btn", "page-no");
+
+        if (i === currentPage) {
+            pageBtn.classList.add("active-page");
+            pageBtn.disabled = true;
+        }
+
+        pageBtn.onclick = () => {
+            const params = new URLSearchParams(window.location.search);
+            params.set("page", i);
+            if (orderby) params.set("$orderby", orderby);
+            if (filter) params.set("$filter", filter);
+
+            window.history.pushState({}, "", `?${params.toString()}`);
+            fetchPeopleFromODATA(orderby, filter, i, pageSize);
+        }
+        paginationDiv.appendChild(pageBtn)
+    }
+
+    // NEXT BUTTON
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "Next";
+    nextBtn.classList.add("pagination-btn", "next-btn");
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", currentPage + 1);
+        if (orderby) params.set("$orderby", orderby);
+        if (filter) params.set("$filter", filter);
+        window.history.pushState({}, "", `?${params.toString()}`);
+        fetchPeopleFromODATA(orderby, filter, currentPage + 1, pageSize);
+    }
+    paginationDiv.appendChild(nextBtn);
+}
+
+
+
+
+
