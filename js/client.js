@@ -49,7 +49,7 @@ const columns = [
 
 
 class DynamicTable {
-    constructor(containerId, columns, data, pageSize = 5) {
+    constructor(containerId, columns, data, pageSize = 20) {
         this.container = document.getElementById(containerId);
         this.columns = columns;
         this.rawData = data;
@@ -121,20 +121,27 @@ let activeFilters = [];
 let activeSorts = [];
 
 
-async function fetchPeopleFromODATA(page = 1, pageSize = 5) {
+async function fetchPeopleFromODATA(page = 1, pageSize = 20) {
     if (lastController) lastController.abort();
     const controller = new AbortController();
     lastController = controller;
 
     try {
-        const baseURL = "https://services.odata.org/v4/TripPinServiceRW/People";
-        const url = `${baseURL}?$count=true&$top=100`; 
+        const baseURL = "https://services.odata.org/TripPinRESTierService/(S(dxf2htextemw1l4jt34dzsa0))/People?$top=20&$count=true";
+        // const params = [];
+        // params.push(`$count=true`);
+        // params.push(`$top=${pageSize}`);
+        // params.push(`$skip=${(page - 1) * pageSize}`);
 
-        const response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
+        // const url = `${baseURL}?${params.join("&")}`;
+        
+        const response = await fetch(baseURL, { signal: controller.signal, headers: { "Accept": "application/json" } });
         if (!response.ok) throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
 
         const json = await response.json();
         const items = Array.isArray(json.value) ? json.value : [];
+
+        // console.log(items)
 
         if (!ODATATable) {
             ODATATable = new DynamicTable("tableContainer", columns, items, pageSize);
@@ -145,7 +152,7 @@ async function fetchPeopleFromODATA(page = 1, pageSize = 5) {
         ODATATable.currentPage = page;
 
         const totalCount = typeof json["@odata.count"] === "number" ? json["@odata.count"] : items.length;
-        renderPagination(totalCount, pageSize, page, orderby, filter);
+        renderPagination(totalCount, pageSize, page);
     } catch (err) {
         if (err.name === "AbortError") {
             console.error("Error fetching OData:", err);
@@ -155,7 +162,6 @@ async function fetchPeopleFromODATA(page = 1, pageSize = 5) {
         lastController = null;
     }
 }
-
 
 
 function applySort(sortFields) {
@@ -300,26 +306,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 const paginationDiv = document.getElementById("pagination");
-function renderPagination(totalCount, pageSize, currentPage, orderby, filter) {
+function renderPagination(totalCount, pageSize, currentPage) {
     paginationDiv.innerHTML = "";
-    const totalPages = Math.ceil(20 / pageSize);
+    const totalPages = Math.ceil(totalCount / pageSize);
+
     // PREVIOUS BUTTON
     const prevBtn = document.createElement("button");
     prevBtn.textContent = "Previous";
-    prevBtn.classList.add("pagination-btn",  "prev-btn");
+    prevBtn.classList.add("pagination-btn", "prev-btn");
     prevBtn.disabled = currentPage === 1;
     prevBtn.onclick = () => {
         const params = new URLSearchParams(window.location.search);
-        params.set("page", currentPage - 1);  
-        if (orderby) params.set("$orderby", orderby);
-        if (filter) params.set("$filter", filter);
+        params.set("page", currentPage - 1);
         window.history.pushState({}, "", `?${params.toString()}`);
-        fetchPeopleFromODATA(orderby, filter, currentPage - 1, pageSize);
+        fetchPeopleFromODATA(currentPage - 1, pageSize);
     };
     paginationDiv.appendChild(prevBtn);
 
     // PAGE NUMBERS
-    for (let i = 1; i <= totalPages; i++){
+    for (let i = 1; i <= totalPages; i++) {
         const pageBtn = document.createElement("button");
         pageBtn.textContent = i;
         pageBtn.classList.add("pagination-btn", "page-no");
@@ -332,13 +337,10 @@ function renderPagination(totalCount, pageSize, currentPage, orderby, filter) {
         pageBtn.onclick = () => {
             const params = new URLSearchParams(window.location.search);
             params.set("page", i);
-            if (orderby) params.set("$orderby", orderby);
-            if (filter) params.set("$filter", filter);
-
             window.history.pushState({}, "", `?${params.toString()}`);
-            fetchPeopleFromODATA(orderby, filter, i, pageSize);
-        }
-        paginationDiv.appendChild(pageBtn)
+            fetchPeopleFromODATA(i, pageSize);
+        };
+        paginationDiv.appendChild(pageBtn);
     }
 
     // NEXT BUTTON
@@ -349,13 +351,69 @@ function renderPagination(totalCount, pageSize, currentPage, orderby, filter) {
     nextBtn.onclick = () => {
         const params = new URLSearchParams(window.location.search);
         params.set("page", currentPage + 1);
-        if (orderby) params.set("$orderby", orderby);
-        if (filter) params.set("$filter", filter);
         window.history.pushState({}, "", `?${params.toString()}`);
-        fetchPeopleFromODATA(orderby, filter, currentPage + 1, pageSize);
-    }
+        fetchPeopleFromODATA(currentPage + 1, pageSize);
+    };
     paginationDiv.appendChild(nextBtn);
 }
+
+
+// function renderPagination(totalCount, pageSize, currentPage) {
+//     paginationDiv.innerHTML = "";
+//     const totalPages = Math.ceil(20 / pageSize);
+//     // PREVIOUS BUTTON
+//     const prevBtn = document.createElement("button");
+//     prevBtn.textContent = "Previous";
+//     prevBtn.classList.add("pagination-btn",  "prev-btn");
+//     prevBtn.disabled = currentPage === 1;
+//     prevBtn.onclick = () => {
+//         const params = new URLSearchParams(window.location.search);
+//         params.set("page", currentPage - 1);  
+//         if (orderby) params.set("$orderby", orderby);
+//         if (filter) params.set("$filter", filter);
+//         window.history.pushState({}, "", `?${params.toString()}`);
+//         fetchPeopleFromODATA(orderby, filter, currentPage - 1, pageSize);
+//     };
+//     paginationDiv.appendChild(prevBtn);
+
+//     // PAGE NUMBERS
+//     for (let i = 1; i <= totalPages; i++){
+//         const pageBtn = document.createElement("button");
+//         pageBtn.textContent = i;
+//         pageBtn.classList.add("pagination-btn", "page-no");
+
+//         if (i === currentPage) {
+//             pageBtn.classList.add("active-page");
+//             pageBtn.disabled = true;
+//         }
+
+//         pageBtn.onclick = () => {
+//             const params = new URLSearchParams(window.location.search);
+//             params.set("page", i);
+//             if (orderby) params.set("$orderby", orderby);
+//             if (filter) params.set("$filter", filter);
+
+//             window.history.pushState({}, "", `?${params.toString()}`);
+//             fetchPeopleFromODATA(orderby, filter, i, pageSize);
+//         }
+//         paginationDiv.appendChild(pageBtn)
+//     }
+
+//     // NEXT BUTTON
+//     const nextBtn = document.createElement("button");
+//     nextBtn.textContent = "Next";
+//     nextBtn.classList.add("pagination-btn", "next-btn");
+//     nextBtn.disabled = currentPage === totalPages;
+//     nextBtn.onclick = () => {
+//         const params = new URLSearchParams(window.location.search);
+//         params.set("page", currentPage + 1);
+//         if (orderby) params.set("$orderby", orderby);
+//         if (filter) params.set("$filter", filter);
+//         window.history.pushState({}, "", `?${params.toString()}`);
+//         fetchPeopleFromODATA(orderby, filter, currentPage + 1, pageSize);
+//     }
+//     paginationDiv.appendChild(nextBtn);
+// }
 
 
 

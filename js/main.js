@@ -432,7 +432,7 @@ filter.addEventListener("click", () => {
 
         /** FETCH DATA */
 let lastController = null;
-async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 5) {
+async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pageSize = 10) {
     if (lastController) lastController.abort();
     const controller = new AbortController();
     lastController = controller;
@@ -448,7 +448,6 @@ async function fetchPeopleFromODATA(orderby = null, filter = null, page = 1, pag
         params.push(`$skip=${(page - 1) * pageSize}`);
 
         const url = `${baseURL}?${params.join("&")}`;
-        // console.log("Fetching:", url);
 
         const response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
         if (!response.ok) throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
