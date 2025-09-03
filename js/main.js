@@ -1,4 +1,4 @@
-import { refreshDOM, activeUrl } from "./utils.js";
+import { refreshDOM, activeUrl, updateButtonState, showModal } from "./utils.js";
 refreshDOM();
 activeUrl();
 
@@ -10,14 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const page = parseInt(params.get("page") || "1", 7)
     fetchPeopleFromODATA(orderby, filter, page);  
 });
-
-/** MODALS */
-function showModal({ title, body, footer }) {
-    document.getElementById("modal-title").innerHTML = title || "";
-    document.getElementById("modal-body").innerHTML = body || "";
-    document.getElementById("modal-footer").innerHTML = footer || "";
-    document.getElementById("modal").style.display = "flex";
-}
 
 // Close modal
 document.getElementById("modal-close").addEventListener("click", () => {
@@ -197,7 +189,7 @@ function applySort(sortFields) {
     window.history.replaceState({}, "", newUrl);
 
     fetchPeopleFromODATA(orderby); 
-    updateButtonState()
+    updateButtonState(activeSorts, activeFilters);
 }
 
 
@@ -334,7 +326,7 @@ function applyFilter(filterFields) {
 
     const orderby = params.get("$orderby"); 
     fetchPeopleFromODATA(orderby, params.get("$filter")); 
-    updateButtonState()
+    updateButtonState(activeSorts, activeFilters);
 }
 
 const filter = document.getElementById("filter");
@@ -436,49 +428,6 @@ filter.addEventListener("click", () => {
         document.getElementById("modal").style.display = "none";
     });
 });
-
-
-/** UPDATE SORT AND FILTER BUTTONS */
-function updateButtonState() {
-    updateBtn(document.getElementById("sort"), activeSorts.length, "Sort");
-    updateBtn(document.getElementById("filter"), activeFilters.length, "Filter");
-}
-
-function updateBtn(button, count, label) {
-    if (count > 0) {
-        button.innerHTML = `
-            <div style="
-                display:inline-flex;
-                align-items:center;
-                background:#7b1b1b;
-                color:#fff;
-                padding:4px 8px;
-                font-family:sans-serif;
-                font-size:14px;
-            ">
-                <span style="margin-right:4px;">${count}</span>
-                <span style="text-decoration:underline;">${label}</span>
-                <button class="clear-btn" style="
-                    background:#5a0f0f;
-                    color:white;
-                    border:none;
-                    margin-left:6px;
-                    cursor:pointer;
-                    font-size:14px;
-                    padding:0 4px;
-                ">X</button>
-            </div>
-        `;
-
-        button.querySelector(".clear-btn").onclick = () => {
-            if (label.toLowerCase() === "sort") activeSorts = [];
-            if (label.toLowerCase() === "filter") activeFilters = [];
-            updateButtonState();
-        };
-    } else {
-        button.innerHTML = `<span>${label}</span>`;
-    }
-}
 
 
         /** FETCH DATA */

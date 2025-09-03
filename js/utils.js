@@ -16,11 +16,15 @@ export function activeUrl() {
     });
 }
 
-
-
+export function showModal({ title, body, footer }) {
+    document.getElementById("modal-title").innerHTML = title || "";
+    document.getElementById("modal-body").innerHTML = body || "";
+    document.getElementById("modal-footer").innerHTML = footer || "";
+    document.getElementById("modal").style.display = "flex";
+}
 
 /** UPDATE SORT AND FILTER BUTTONS */
-export function updateButtonState() {
+export function updateButtonState(activeSorts, activeFilters) {
     updateBtn(document.getElementById("sort"), activeSorts.length, "Sort");
     updateBtn(document.getElementById("filter"), activeFilters.length, "Filter");
 }
@@ -54,7 +58,7 @@ export function updateBtn(button, count, label) {
         button.querySelector(".clear-btn").onclick = () => {
             if (label.toLowerCase() === "sort") activeSorts = [];
             if (label.toLowerCase() === "filter") activeFilters = [];
-            updateButtonState();
+            updateButtonState(activeSorts, activeFilters);
         };
     } else {
         button.innerHTML = `<span>${label}</span>`;
