@@ -107,8 +107,6 @@ class DynamicTable {
 
         table.appendChild(tbody);
         this.container.appendChild(table);
-
-        // renderPagination(this.filteredData.length, this.pageSize, this.currentPage);
     }
 }
 

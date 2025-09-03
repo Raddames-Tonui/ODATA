@@ -35,7 +35,7 @@ class Column {
 
 // DynamicTable class
 class DynamicTable {
-    constructor(containerId, columns, data, rowsPerPage = 10) {
+    constructor(containerId, columns, data, rowsPerPage = 5) {
         this.container = document.getElementById(containerId);
         this.columns = columns;         
         this.rawData = data;           
@@ -128,7 +128,6 @@ class DynamicTable {
 
 let ODATATable = null; 
 
-// Column definitions
 const columns = [
     new Column({ id: 'UserName', caption: 'UserName' }),
     new Column({ id: 'FirstName', caption: 'First Name' }),
@@ -158,7 +157,7 @@ const columns = [
             }
             return `
                 <div>
-                    ${row.Emails.map(email => `<p style="color:grey; padding:4px 0">${email}</p>`).join("")}
+                    ${row.Emails.map(email => `<p style="color:grey; padding:1px 0">${email}</p>`).join("")}
                 </div>
             `;
         }
@@ -169,7 +168,6 @@ const columns = [
 
 /** SORT */
 let activeSorts = [];
-
 function applySort(sortFields) {
     const orderby = sortFields
         .filter(sf => sf.field) 
@@ -284,6 +282,7 @@ sort.addEventListener("click", () => {
 
         activeSorts = []; 
         fetchPeopleFromODATA(); 
+        updateButtonState(activeSorts, activeFilters);
         document.getElementById("modal").style.display = "none";
     });
 });
@@ -425,6 +424,7 @@ filter.addEventListener("click", () => {
 
         activeFilters = [];
         fetchPeopleFromODATA(params.get("$orderby"));
+        updateButtonState(activeSorts, activeFilters);
         document.getElementById("modal").style.display = "none";
     });
 });
