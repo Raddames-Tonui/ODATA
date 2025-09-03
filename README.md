@@ -2,7 +2,7 @@
 
 **Live Demo:** [Try it here](https://raddames-tonui.github.io/ODATA/client.html)
 
----
+
 
 ## Overview
 
@@ -13,7 +13,6 @@ This project demonstrates different ways of working with **OData** by fetching a
 * **Sorting**: Client‑side sorting by column with ascending/descending options.
 * **Filtering**: Flexible filters with operators such as *contains*, *equals*, *starts with*, and *ends with*.
 
----
 
 ## Features
 
@@ -24,18 +23,12 @@ This project demonstrates different ways of working with **OData** by fetching a
 | **Filtering**  | Modal to apply conditions across table columns |
 | **Pagination** | Client‑side paging of results                  |
 
----
-
 ## Tech Stack
 
 * **JavaScript (Vanilla)**
 * **HTML / CSS**
 * **OData (TripPin Service)**
 
----
 
-
-
----
 
 **License:** MIT License
