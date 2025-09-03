@@ -24,6 +24,16 @@ export function showModal({ title, body, footer }) {
 }
 
 /** UPDATE SORT AND FILTER BUTTONS */
+const sortBtn = document.getElementById("sort");
+const filterBtn = document.getElementById("filter");
+
+// Store their original markup
+const initialButtonStates = {
+    sort: sortBtn.innerHTML,
+    filter: filterBtn.innerHTML
+};
+
+
 export function updateButtonState(activeSorts, activeFilters) {
     updateBtn(document.getElementById("sort"), activeSorts.length, "Sort");
     updateBtn(document.getElementById("filter"), activeFilters.length, "Filter");
@@ -60,7 +70,7 @@ export function updateBtn(button, count, label) {
             if (label.toLowerCase() === "filter") activeFilters = [];
             updateButtonState(activeSorts, activeFilters);
         };
-    } else {
-        button.innerHTML = `<span>${label}</span>`;
+        } else {
+        button.innerHTML = initialButtonStates[label.toLowerCase()];
     }
 }

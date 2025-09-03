@@ -1,8 +1,6 @@
 import { activeUrl, refreshDOM, updateButtonState, showModal} from "./utils.js";
 refreshDOM();
 activeUrl();
-
-
 // Close modal
 document.getElementById("modal-close").addEventListener("click", () => {
     document.getElementById("modal").style.display = "none";
@@ -26,14 +24,13 @@ class Column {
 }
 
 const columns = [
-    new Column({ id: 'UserName', caption: 'UserName' }),
+    new Column({
+        id: 'UserName', caption: 'UserName' }),
     new Column({ id: 'FirstName', caption: 'First Name' }),
     new Column({ id: 'LastName', caption: 'Last Name' }),
-    new Column({ id: 'MiddleName', caption: 'MiddleName',isSortable: false }),
     new Column({
         id: 'Gender',
         caption: 'Gender',
-        isSortable:true,
         render: (row) => {
             if (row.Gender === "Male") {
                 return `<span style="color:grey;">${row.Gender}</span>`;
@@ -44,12 +41,13 @@ const columns = [
         }
     }),
     new Column({ id: 'Age', caption: 'Age', hide: true }),
+    new Column({ id: 'MiddleName', caption: 'MiddleName',isSortable: false }),
 ];
 
 
 
 class DynamicTable {
-    constructor(containerId, columns, data, pageSize = 20) {
+    constructor(containerId, columns, data, pageSize = 10) {
         this.container = document.getElementById(containerId);
         this.columns = columns;
         this.rawData = data;
@@ -110,7 +108,7 @@ class DynamicTable {
         table.appendChild(tbody);
         this.container.appendChild(table);
 
-        renderPagination(this.filteredData.length, this.pageSize, this.currentPage);
+        // renderPagination(this.filteredData.length, this.pageSize, this.currentPage);
     }
 }
 
@@ -121,7 +119,7 @@ let activeFilters = [];
 let activeSorts = [];
 
 
-async function fetchPeopleFromODATA(page = 1, pageSize = 20) {
+async function fetchPeopleFromODATA(page = 1, pageSize = 5) {
     if (lastController) lastController.abort();
     const controller = new AbortController();
     lastController = controller;
@@ -135,23 +133,27 @@ async function fetchPeopleFromODATA(page = 1, pageSize = 20) {
 
         // const url = `${baseURL}?${params.join("&")}`;
         
-        const response = await fetch(baseURL, { signal: controller.signal, headers: { "Accept": "application/json" } });
-        if (!response.ok) throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+        const response = await fetch(baseURL, {
+            signal: controller.signal,
+            headers: { "Accept": "application/json" }
+        });
+        if (!response.ok) {
+            new Error(`Fetch failed: ${response.status} ${response.statusText}`)
+        };
 
         const json = await response.json();
-        const items = Array.isArray(json.value) ? json.value : [];
-
-        // console.log(items)
+        const responseData = Array.isArray(json.value) ? json.value : [];
+        // console.log(responseData)
 
         if (!ODATATable) {
-            ODATATable = new DynamicTable("tableContainer", columns, items, pageSize);
+            ODATATable = new DynamicTable("tableContainer", columns, responseData, pageSize);
         } else {
-            ODATATable.setData(items, page);
+            ODATATable.setData(responseData, page);
         }
 
         ODATATable.currentPage = page;
 
-        const totalCount = typeof json["@odata.count"] === "number" ? json["@odata.count"] : items.length;
+        const totalCount = typeof json["@odata.count"] === "number" ? json["@odata.count"] : responseData.length;
         renderPagination(totalCount, pageSize, page);
     } catch (err) {
         if (err.name === "AbortError") {
@@ -256,9 +258,14 @@ sort.addEventListener("click", () => {
     });
 
     document.getElementById("resetSort").addEventListener("click", () => {
-        activeFilters = [];
+        activeSorts = [];
+        ODATATable.filteredData = [...ODATATable.rawData];
+        ODATATable.currentPage = 1;
+        ODATATable.render();
+        updateButtonState(activeSorts, activeFilters);
         document.getElementById("modal").style.display = "none";
-    })
+    });
+
 });
 
 // Filter Button 
@@ -293,6 +300,15 @@ document.getElementById("filter").addEventListener("click", () => {
         const op = document.getElementById("filter-op").value;
         const value = document.getElementById("filter-value").value;
         applyFilter([{ field, op, value }]);
+        document.getElementById("modal").style.display = "none";
+    });
+
+    document.getElementById("resetFilter").addEventListener("click", () => {
+        activeFilters = [];
+        ODATATable.filteredData = [...ODATATable.rawData];
+        ODATATable.currentPage = 1;
+        ODATATable.render();
+        updateButtonState(activeSorts, activeFilters);
         document.getElementById("modal").style.display = "none";
     });
 });
@@ -357,63 +373,6 @@ function renderPagination(totalCount, pageSize, currentPage) {
     paginationDiv.appendChild(nextBtn);
 }
 
-
-// function renderPagination(totalCount, pageSize, currentPage) {
-//     paginationDiv.innerHTML = "";
-//     const totalPages = Math.ceil(20 / pageSize);
-//     // PREVIOUS BUTTON
-//     const prevBtn = document.createElement("button");
-//     prevBtn.textContent = "Previous";
-//     prevBtn.classList.add("pagination-btn",  "prev-btn");
-//     prevBtn.disabled = currentPage === 1;
-//     prevBtn.onclick = () => {
-//         const params = new URLSearchParams(window.location.search);
-//         params.set("page", currentPage - 1);  
-//         if (orderby) params.set("$orderby", orderby);
-//         if (filter) params.set("$filter", filter);
-//         window.history.pushState({}, "", `?${params.toString()}`);
-//         fetchPeopleFromODATA(orderby, filter, currentPage - 1, pageSize);
-//     };
-//     paginationDiv.appendChild(prevBtn);
-
-//     // PAGE NUMBERS
-//     for (let i = 1; i <= totalPages; i++){
-//         const pageBtn = document.createElement("button");
-//         pageBtn.textContent = i;
-//         pageBtn.classList.add("pagination-btn", "page-no");
-
-//         if (i === currentPage) {
-//             pageBtn.classList.add("active-page");
-//             pageBtn.disabled = true;
-//         }
-
-//         pageBtn.onclick = () => {
-//             const params = new URLSearchParams(window.location.search);
-//             params.set("page", i);
-//             if (orderby) params.set("$orderby", orderby);
-//             if (filter) params.set("$filter", filter);
-
-//             window.history.pushState({}, "", `?${params.toString()}`);
-//             fetchPeopleFromODATA(orderby, filter, i, pageSize);
-//         }
-//         paginationDiv.appendChild(pageBtn)
-//     }
-
-//     // NEXT BUTTON
-//     const nextBtn = document.createElement("button");
-//     nextBtn.textContent = "Next";
-//     nextBtn.classList.add("pagination-btn", "next-btn");
-//     nextBtn.disabled = currentPage === totalPages;
-//     nextBtn.onclick = () => {
-//         const params = new URLSearchParams(window.location.search);
-//         params.set("page", currentPage + 1);
-//         if (orderby) params.set("$orderby", orderby);
-//         if (filter) params.set("$filter", filter);
-//         window.history.pushState({}, "", `?${params.toString()}`);
-//         fetchPeopleFromODATA(orderby, filter, currentPage + 1, pageSize);
-//     }
-//     paginationDiv.appendChild(nextBtn);
-// }
 
 
 
